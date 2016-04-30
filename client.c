@@ -16,7 +16,6 @@ int minTrustedMembers;
 int noOfReqCircleMembers;
 
 void usage(char* program){
-	printf("kek5");
 	fprintf(stderr, "\n%s Usage:\n\n"
 			"  -a [filename]\t\t\tAdd or replace a file on the oldtrusty server.\n"
 			"  -c [number]\t\t\tProvide the minimum circle of trust size.\n"
