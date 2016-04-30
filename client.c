@@ -1,6 +1,10 @@
-//
-//  Client.c
-//  
+/*
+	CITS3002 Project 2016
+	Name:			Ammar Abu Shamleh, Pradyumn Vij
+	Student number:	21469477
+	Date:			d/m/2015
+*/
+
 #include "client.h"
 
 //  Using ':' as starting of OPTLIST silences getopt()
@@ -12,6 +16,7 @@ int minTrustedMembers;
 int noOfReqCircleMembers;
 
 void usage(char* program){
+	printf("kek5");
 	fprintf(stderr, "\n%s Usage:\n\n"
 			"  -a [filename]\t\t\tAdd or replace a file on the oldtrusty server.\n"
 			"  -c [number]\t\t\tProvide the minimum circle of trust size.\n"
@@ -30,8 +35,8 @@ int main(int argc, char **argv) {
     requiredCircleMember = NULL;
     
     //Check number of arguments
-    if(argc < 2) {
-        fprintf(stderr, "%s: requires at least 1 command line option.\n", argv[0]);
+    if(argc < 2 || argv[1][0] != '-') {
+        fprintf(stderr, "%s: requires at least 1 valid command line option.\n", argv[0]);
         usage(argv[0]);
         return EXIT_FAILURE;
     }
@@ -113,16 +118,12 @@ int main(int argc, char **argv) {
                 break;
             case ':':
             	//  valid option, missing argument
-            	printf("kek");
             	fprintf(stderr, "%s: '-%c' option requires an argument.\n", argv[0], optopt);
             	return EXIT_FAILURE;
             case '?':
             	//  invalid option
             	fprintf(stderr, "%s: Unknown option '-%c' is invalid.\n", argv[0], optopt);
             	return EXIT_FAILURE;
-            default:
-            	//  Improper use of client program.
-            	usage(argv[0]);
         }
     }
     
