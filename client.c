@@ -11,7 +11,7 @@
 #define OPTLIST ":a:c:f:h:ln:u:v:"
 
 int circleSize;
-char *requiredCircleMember;
+char **requiredMembers;
 int minTrustedMembers;
 int noOfReqCircleMembers;
 
@@ -31,7 +31,9 @@ void usage(char* program){
 int main(int argc, char **argv) {
     //Initial set up stuff
     circleSize = 0; //Until user specifies otherwise
-    requiredCircleMember = NULL;
+    requiredMembers = NULL;
+    printf("\n"); //For neat spacing
+    
     
     //Check number of arguments
     if(argc < 2 || argv[1][0] != '-') {
@@ -50,56 +52,52 @@ int main(int argc, char **argv) {
     char* checkFilenameAuth;
     char* authorisingCert;
     int port = 0;
-
-    // bools for testing.
-    bool aflag = false;
-    bool cflag = false;
-    bool fflag = false;
-    bool hflag = false;
-    bool lflag = false;
-    bool nflag = false;
-    bool uflag = false;
-    bool vflag = false;
+    bool success = false;
     
     //Parse command line args using getopt
     int option;
     while((option = getopt(argc, argv, OPTLIST)) != -1) {
         switch(option){
         	case 'a':
-                //  Upload specified file to server, replac file if needed
+                //  Upload specified file to server, replacing file if needed
                 uploadFilename = strdup(optarg);
-                aflag = !aflag;
+                success = uploadFile(uploadFilename, false);
+                if(!success) {
+                    //DO SOMETHING
+                }
                 break;
             case 'c':
                 //  Specify minimum required circle of trust circumference
                 circleSize = atoi(optarg);
-                cflag = !cflag;
                 break;
             case 'f':
                 //  Fetch existing file from server
                 downloadFilename = strdup(optarg);
-                fflag = !fflag;
+                success = downloadFile(downloadFilename);
+                if(!success) {
+                    //DO SOMETHING
+                }
                 break;
             case 'h':
                 //  Provide remote address hosting server
                 hostName = strdup(optarg); // overprovisions memory
                 sscanf(optarg, "%[^:]:%d", hostName, &port);
-                hflag = !hflag;
+                getAddress(hostName, port);
                 break;
             case 'l':
                 //  List all stored files on server and how they're protected
-                lflag = !lflag;
+                listFiles();
                 break;
             case 'n':
                 //  Require circle of trust to involve named person
                 newMember = strdup(optarg);
                 noOfReqCircleMembers++;
-                nflag = !nflag;
+                newRequiredMember(newMember);
                 break;
             case 'u':
                 //  Upload certificate to server
                 uploadCertificate = strdup(optarg);
-                uflag = !uflag;
+                uploadFile(uploadCertificate, true);
                 break;	
             case 'v':
             	// Vouch for authenticity of filename using named certificate
@@ -113,7 +111,7 @@ int main(int argc, char **argv) {
             			 "-%c [filename on server] [certificate to vouch with]\n", 
             			 	argv[0], optopt, optopt);
             	}
-                vflag = !vflag;
+                //FUNCTION CALL
                 break;
             case ':':
             	//  valid option, missing argument
@@ -126,16 +124,53 @@ int main(int argc, char **argv) {
         }
     }
     
-    //Test command line interpretation
-    if(aflag) printf("Upload file %s\n", uploadFilename);
-    if(cflag) printf("Circle of size %d\n", circleSize);
-    if(fflag) printf("Fetch file %s\n", downloadFilename);
-    if(hflag) printf("Provide remote address of server %s with port %d\n", hostName, port);
-    if(lflag) printf("List all stored files and their protection\n");
-    if(nflag) printf("Require circle of trust to involve %s\n", newMember);
-    if(uflag) printf("Upload certificate %s\n", uploadCertificate);
-    if(vflag) printf("Filename: %s, authorised by certificate: %s\n", checkFilenameAuth, authorisingCert);
+    printf("Required circle size: %d\n", circleSize);
+    printf("Required circle members:\n");
+    for(int i=0; i<noOfReqCircleMembers; i++) printf("%s\n", requiredMembers[i]);
+    freeCircleMembers();
     printf("\n");
-
+    
     return EXIT_SUCCESS;
+}
+
+//Maintains list of required circle members
+void newRequiredMember (char *newMember) {
+    requiredMembers = realloc(requiredMembers, noOfReqCircleMembers * sizeof(char *));
+    requiredMembers[noOfReqCircleMembers-1] = malloc(strlen(newMember));
+    requiredMembers[noOfReqCircleMembers-1] = strdup(newMember);
+}
+
+//Frees memory allocated for storing required circle members
+void freeCircleMembers () {
+    for(int i=0; i < noOfReqCircleMembers; i++) {
+        free(requiredMembers[i]);
+    }
+    free(requiredMembers);
+}
+
+//Uploads file to server. Param isCert identifies whether file being uploaded is a certificate
+bool uploadFile (char *filename, bool isCert) {
+    //TODO
+    if(!isCert)printf("Upload file \"%s\"\n", filename);
+    else printf("Upload certificate \"%s\"\n", filename);
+    return false;
+}
+
+//Downloads file from server
+bool downloadFile (char *filename) {
+    //TODO
+    printf("Download file\"%s\"\n", filename);
+    return false;
+}
+
+//Get and report address of remote server
+void getAddress (char *hostName, int port) {
+    //TODO
+    printf("Get address of \"%s:%d\"\n", hostName, port);
+}
+
+//List all files on server along with their protection
+void listFiles () {
+    //TODO
+    printf("List all files and their protection\n");
 }
