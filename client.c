@@ -5,7 +5,7 @@
 	Date:			d/m/2015
 */
 
-#include "client.h"
+#include "clientheader.h"
 
 //  Using ':' as starting of OPTLIST silences getopt()
 #define OPTLIST ":a:c:f:h:ln:u:v:"
