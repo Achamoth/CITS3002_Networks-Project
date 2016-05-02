@@ -1,6 +1,6 @@
 /*
 	CITS3002 Project 2016
-	Name:			Ammar Abu Shamleh, Pradyumn Vij
+	Name:			Ammar Abu Shamleh, Pradyumn Vij, Goce Krlevski 
 	Student number:	21469477
 	Date:			d/m/2015
 */
