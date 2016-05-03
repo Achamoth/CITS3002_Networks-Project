@@ -105,6 +105,7 @@ int main(int argc, char **argv) {
             	if(optind < argc &&  *argv[optind] != '-'){
             		authorisingCert = strdup(argv[optind]);
             		optind++;
+                    vouchForFile(checkFilenameAuth, authorisingCert);
             	}
             	else{
             		fprintf(stderr, "%s: '-%c' requires TWO arguments, for example\n"
@@ -173,4 +174,10 @@ void getAddress (char *hostName, int port) {
 void listFiles () {
     //TODO
     printf("List all files and their protection\n");
+}
+
+//Vouch for specified file (param 1) with designated certificate (param 2)
+void vouchForFile(char *filename, char *certname) {
+    //TODO
+    printf("Vouch for file \"%s\" with certificate \"%s\"\n", filename, certname);
 }

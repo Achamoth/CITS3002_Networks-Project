@@ -23,3 +23,4 @@ bool uploadFile(char *fileName, bool isCert);
 bool downloadFile(char *fileName);
 void getAddress(char *hostName, int port);
 void listFiles();
+void vouchForFile(char *filename, char *certname);
