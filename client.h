@@ -13,14 +13,14 @@
 
 #if defined(__linux__)
 extern  char  *strdup(const char *str);
-extern  int fileno(const FILE *fp);
 #endif
 
-void newRequiredMember(char *newMember);
-void freeCircleMembers();
+//  Package accessible functions
+extern void newRequiredMember(char *);
+extern void freeCircleMembers();
 
-bool uploadFile(char *fileName, bool isCert);
-bool downloadFile(char *fileName);
-void getAddress(char *hostName, int port);
-void listFiles();
-void vouchForFile(char *filename, char *certname);
+extern bool uploadFile(char *, bool);
+extern bool downloadFile(char *);
+extern getAddress(char *, int);
+extern void listFiles();
+extern void vouchForFile(char *, char *);
