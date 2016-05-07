@@ -8,10 +8,9 @@ PROJECT = oldTrusty
 HEADERS = $(wildcard *.h)
 SOURCES = $(wildcard *.c)
 OBJECTS = $(wildcard *.o)
-EXECS = $(patsubst %.c,%,$(SOURCES))
 
 CC = cc
-CFLAGS = -std=gnu99 -Wall -pedantic -Werror
+CFLAGS = -std=c99 -Wall -pedantic -Werror
 
 $(PROJECT) : $(OBJECTS)
 	$(CC) $(CFLAGS) $(SOURCES) -o $(PROJECT) $(OBJECTS)

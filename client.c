@@ -65,14 +65,15 @@ static int openConnection(const char *host, const char *port){
 		usage();
 	}
 	// IPV6 Scoped ID check
-	if(hostFound->ai_family == PF_INET6){
+	/*if(hostFound->ai_family == PF_INET6){
 		// If sin6_scope_id of ipv6 type address is unchanged ask for scoped address
+		sockaddr_in
 		if(hostFound->ai_addr->sin6_scope_id == 0){
 			fprintf(stderr, "%s: IPv6 Unscoped Error: When using IPv6 addresses, "
 				"make sure they are entered in a scoped format.\n", programName);
 		}
 		usage();
-	}
+	}*/
 
 	// Create a socket descriptor
 	socketDescriptor = socket(hostFound->ai_family,

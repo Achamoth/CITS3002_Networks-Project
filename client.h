@@ -17,18 +17,40 @@
 #include <netdb.h>			// getaddrinfo()
 #include <netinet/in.h>		// sockaddr_in def
 
-//  Allow usage of types without specifying "struct"
-typedef struct addrinfo addrinfo;
-typedef struct sockaddr_in6 sockaddr_in6;
+//------------------------------------------------------------------
+// POSIX defined container struct from netdb.h
+// As described in 
+// http://beej.us/guide/bgnet/output/html/multipage/ipstructsdata.html
+//------------------------------------------------------------------
+typedef struct addrinfo {
+    int              ai_flags;     // AI_PASSIVE, AI_CANONNAME, etc.
+    int              ai_family;    // AF_INET, AF_INET6, AF_UNSPEC
+    int              ai_socktype;  // SOCK_STREAM, SOCK_DGRAM
+    int              ai_protocol;  // use 0 for "any"
+    size_t           ai_addrlen;   // size of ai_addr in bytes
+    struct sockaddr *ai_addr;      // struct sockaddr_in or _in6
+    char            *ai_canonname; // full canonical hostname
 
+    struct addrinfo *ai_next;      // linked list, next node
+} addrinfo;
+
+//------------------------------------------------------------------
+// POSIX defined functions
+//------------------------------------------------------------------
 #if defined(__linux__)
-extern  char  *strdup(const char *str);
+extern char  *strdup(const char *str);
+extern int getaddrinfo(const char *node, const char *service,
+						const struct addrinfo *hints,
+							struct addrinfo **res);
+extern const char *gai_strerror(int errcode);
+extern void freeaddrinfo(struct addrinfo *res);
 #endif
 
-//  Package accessible functions
+//------------------------------------------------------------------
+// Package accessible functions
+//------------------------------------------------------------------
 extern void newRequiredMember(char *);
 extern void freeCircleMembers();
-
 extern bool uploadFile(char *, bool);
 extern bool downloadFile(char *);
 extern void getAddress(char *, int);
