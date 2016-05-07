@@ -17,6 +17,21 @@
 #include <netdb.h>			// getaddrinfo()
 #include <netinet/in.h>		// sockaddr_in def
 
+
+//------------------------------------------------------------------
+// Enum action struct to determine purpose of client message
+//------------------------------------------------------------------
+typedef enum {
+	NONE = 0,
+	PUSH = 1,
+	PULL = 2,
+	LIST = 3,
+	CHECK = 4,
+	VOUCH = 5,
+	PASS = 6,
+	FAIL = 7,
+} actionType;
+
 //------------------------------------------------------------------
 // POSIX defined container struct from netdb.h
 // As described in 
@@ -38,17 +53,21 @@ typedef struct addrinfo {
 // POSIX defined functions
 //------------------------------------------------------------------
 #if defined(__linux__)
-extern char  *strdup(const char *str);
-extern int getaddrinfo(const char *node, const char *service,
-						const struct addrinfo *hints,
-							struct addrinfo **res);
-extern const char *gai_strerror(int errcode);
-extern void freeaddrinfo(struct addrinfo *res);
+	extern char  *strdup(const char *str);
+	extern int getaddrinfo(const char *node, const char *service,
+							const struct addrinfo *hints,
+								struct addrinfo **res);
+	extern const char *gai_strerror(int errcode);
+	extern void freeaddrinfo(struct addrinfo *res);
 #endif
 
 //------------------------------------------------------------------
 // Package accessible functions
 //------------------------------------------------------------------
+extern int openConnection(const char *, const char *);
+extern void usage();
+extern void sendMessage(char *, char *, actionType, char *, char*, 
+							int, char*);
 extern void newRequiredMember(char *);
 extern void freeCircleMembers();
 extern bool uploadFile(char *, bool);
@@ -56,3 +75,8 @@ extern bool downloadFile(char *);
 extern void getAddress(char *, int);
 extern void listFiles();
 extern void vouchForFile(char *, char *);
+
+//------------------------------------------------------------------
+// Package accessible variables
+//------------------------------------------------------------------
+extern const char* programName;
