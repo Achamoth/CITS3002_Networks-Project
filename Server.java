@@ -2,7 +2,9 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-//Code for server taken from "Core Java: Volume 2. Chapter 3: Networking"
+//Written by Ammar Abu Shamleh, with reference to resources (all listed and named in relevant sections of code)
+
+//Code ideas for server taken from "Core Java: Volume 2. Chapter 3: Networking"
 public class Server {
 
     private static final int PORT = 8189;
