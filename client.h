@@ -16,6 +16,9 @@
 #include <sys/socket.h>		// socket funcitons
 #include <netdb.h>			// getaddrinfo()
 #include <netinet/in.h>		// sockaddr_in def
+//  OpenSSL includes
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 
 //------------------------------------------------------------------
@@ -64,9 +67,9 @@ typedef struct addrinfo {
 //------------------------------------------------------------------
 // Package accessible functions
 //------------------------------------------------------------------
-extern int openConnection(const char *, const char *);
+extern int openTCPConnection(const char *, const char *);
 extern void usage();
-extern void sendMessage(char *, char *, actionType, char *, char*, 
+extern void parseRequest(char *, char *, actionType, char *, char*, 
 							int, char*);
 extern void newRequiredMember(char *);
 extern void freeCircleMembers();

@@ -8,7 +8,7 @@
 
 /*
 	sendMessage
-	Parse the type of message required
+	Parse the type of message required, direct user input appropriately
 	@param host			Server address (IPV4, can be changed to IPV6 in main in the future)
 	@param port 		Server port
 	@param action		Purpose of message
@@ -18,7 +18,7 @@
 	@param member		Member's name should be in circle of trust
 	@return void		Maybe change to success / fail
 */
-void sendMessage(char *host, char *port, actionType action, char *file, char *certificate, 
+void parseRequest(char *host, char *port, actionType action, char *file, char *certificate, 
 					int minCircle, char *member){
 
 }

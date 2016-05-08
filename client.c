@@ -38,8 +38,6 @@ void usage(void){
 	@param argv		Arguments (array of char arrays)
 */
 int main(int argc, char **argv) {
-
-
     // Program name without /, cast to constant for file
     programName = (const char*) strrchr(argv[0], '/');
     
@@ -50,8 +48,8 @@ int main(int argc, char **argv) {
         usage();
     }
     
-    char* host = NULL;	// possibly set as default
-	char* port = NULL;	// possibly set as default
+    char* host = NULL;	// possibly set as a default
+	char* port = NULL;	// possibly set as a default
 	char* fileName = NULL;
 	char* certificateName = NULL;
 	char* memberName = NULL;
@@ -125,9 +123,8 @@ int main(int argc, char **argv) {
         }
     }
 
-
-    sendMessage(host, port, action, fileName, certificateName, minCircleSize, memberName);
+    //  Run user request
+    parseRequest(host, port, action, fileName, certificateName, minCircleSize, memberName);
     
     return EXIT_SUCCESS;
 }
-
