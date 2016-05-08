@@ -10,6 +10,8 @@
 #define OPTLIST ":a:c:f:h:ln:u:v:"
 // Program name
 const char* programName;
+char** requiredMembers;
+int noOfReqCircleMembers;
 
 
 /*
@@ -54,7 +56,9 @@ int main(int argc, char **argv) {
 	char* port = NULL;	// possibly set as default
 	char* fileName = NULL;
 	char* certificateName = NULL;
-	char* memberName = NULL;
+    char* newMember = NULL;
+	requiredMembers = NULL;
+    noOfReqCircleMembers = 0;
 	int minCircleSize = 0;
 	actionType action = NONE;
 
@@ -92,8 +96,10 @@ int main(int argc, char **argv) {
                 break;
             case 'n':
                 //  Require circle of trust to involve named person
-            	action = CHECK;
-            	memberName = strdup(optarg);
+            	//action = CHECK;
+                newMember = strdup(optarg);
+                newRequiredMember(newMember);
+                noOfReqCircleMembers++;
                 break;
             case 'u':
                 //  Upload new certificate to server
@@ -131,3 +137,17 @@ int main(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
+//Maintains list of required circle members
+void newRequiredMember (char *newMember) {
+    requiredMembers = realloc(requiredMembers, noOfReqCircleMembers * sizeof(char *));
+    requiredMembers[noOfReqCircleMembers-1] = malloc(strlen(newMember));
+    requiredMembers[noOfReqCircleMembers-1] = strdup(newMember);
+}
+
+//Frees memory allocated for storing required circle members
+void freeCircleMembers () {
+    for(int i=0; i < noOfReqCircleMembers; i++) {
+        free(requiredMembers[i]);
+    }
+    free(requiredMembers);
+}
