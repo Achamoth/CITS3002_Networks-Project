@@ -12,7 +12,7 @@ public class Server {
     
 	public static void main(String[] args) {
 		
-		//Establish new socket that monitors port 8189
+		//Establish new socket that monitors specified port
         ServerSocket s = null;
         try {
             s =  new ServerSocket(PORT);
@@ -27,7 +27,8 @@ public class Server {
             //Idles until client connects to port
 			Socket incoming = null;
             try {
-                s.accept();
+                System.out.println("Waiting on port: " + PORT);
+                incoming = s.accept();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -118,9 +119,29 @@ class ThreadedHandler implements Runnable {
         }
         //Set up inStream scanner and read client's instructions
         Scanner in = new Scanner(inStream);
-        String line = in.nextLine().trim();
+        PrintWriter out = new PrintWriter(outStream, true);
+        out.println("Hi. Enter BYE to exit");
         
-        //Decode instruction
+        //Echo client input
+        String line = null;
+        if(in.hasNextLine()) line = in.nextLine().trim();
+        while(!line.equals("BYE")) {
+            out.println("Echo: " + line);
+            if(in.hasNextLine()) line = in.nextLine();
+        }
+        //Client has said "BYE"
+        out.println("BYE");
+        
+        //Close connection
+        try {
+            incoming.close();
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Closed connection on server side");
+        
+        
+        /*Decode instruction
         switch(line) {
             case "Upload file":
                 try {
@@ -130,6 +151,6 @@ class ThreadedHandler implements Runnable {
                 }
                 break;
             //Continue writing cases
-        }
+        }*/
     }
 }
