@@ -11,12 +11,13 @@ OBJECTS = $(wildcard *.o)
 
 CC = cc
 CFLAGS = -std=c99 -Wall -pedantic -Werror
+LIBS = -lssl -lcrypto
 
 $(PROJECT) : $(OBJECTS)
-	$(CC) $(CFLAGS) $(SOURCES) -o $(PROJECT) $(OBJECTS)
+	$(CC) $(CFLAGS) $(LIBS) $(SOURCES) -o $(PROJECT) $(OBJECTS) $(LIBS)
 
 $(OBJECTS): $(SOURCES) $(HEADERS)
-	$(CC) $(CFLAGS) -c $(SOURCES)
+	$(CC) $(CFLAGS) $(LIBS) -c $(SOURCES)
 
 clean:
 	rm -f $(PROJECT) $(OBJECTS)

@@ -67,8 +67,8 @@ void secureConnection(const char* host, const char* port){
 	SSL_load_error_strings();
 	SSL_library_init();	//  Loacs encryption and hashing for SSL program
 	OpenSSL_add_all_algorithms(); // cryptogrophy
-	//  Create SSL context - client in this case using SSLV3
-	SSL_CTX *sslContext = SSL_CTX_new(SSLV3_client_method());
+	//  Create SSL context - client in this case using SSLv3
+	SSL_CTX *sslContext = SSL_CTX_new(SSLv3_client_method());
 	if(sslContext == NULL){
 		fprintf(stderr, "%s: SSL: Failed to create new context.\n", programName);
 		exit(EXIT_FAILURE);
