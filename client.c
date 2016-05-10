@@ -17,15 +17,15 @@ const char* programName;
 */
 void usage(void){
 	fprintf(stderr, "\n%s Usage:\n\n"
-			"  -a [filename]\t\t\tAdd or replace a file on the oldtrusty server.\n"
-			"  -c [number]\t\t\tProvide the minimum circle of trust length.\n"
-			"  -f [filename]\t\t\tFetch an existing file from the oldtrusty server.\n"
-			"  -h [hostname:port]\t\tProvide the remote address hosting the oldtrusty server.\n"
-			"  -l \t\t\t\tList all stored files and how they are protected.\n"
-			"  -n [member_name]\t\tAdd a new member to the circle of trust with \"member_name\".\n"
-			"  -u [filename]\t\t\tUpload a certificate to the oldtrusty server.\n"
-			"  -v [filename] [certificate]\tVouch for the authenticity of an existing file on the\n"
-			"\t\t\t\toldtrusty server using the provided named certificate.\n\n", programName);
+		"  -a [filename]\t\t\tAdd or replace a file on the oldtrusty server.\n"
+		"  -c [number]\t\t\tProvide the minimum circle of trust length.\n"
+		"  -f [filename]\t\t\tFetch an existing file from the oldtrusty server.\n"
+		"  -h [hostname:port]\t\tProvide the remote address hosting the oldtrusty server.\n"
+		"  -l \t\t\t\tList all stored files and how they are protected.\n"
+		"  -n [member_name]\t\tAdd a new member to the circle of trust with \"member_name\".\n"
+		"  -u [filename]\t\t\tUpload a certificate to the oldtrusty server.\n"
+		"  -v [filename] [certificate]\tVouch for the authenticity of an existing file on the\n"
+		"\t\t\t\toldtrusty server using the provided named certificate.\n\n", programName);
 	exit(EXIT_FAILURE);
 }
 
@@ -114,17 +114,20 @@ int main(int argc, char **argv) {
                 break;
             case ':':
             	//  valid option, missing argument
-            	fprintf(stderr, "%s: '-%c' option requires an argument.\n", programName, optopt);
+            	fprintf(stderr, "%s: '-%c' option requires an argument.\n", 
+                    programName, optopt);
             	usage();
             case '?':
             	//  invalid option
-            	fprintf(stderr, "%s: Unknown option '-%c'.\n", programName, optopt);
+            	fprintf(stderr, "%s: Unknown option '-%c'.\n", programName, 
+                    optopt);
             	usage();
         }
     }
 
     //  Run user request
-    parseRequest(host, port, action, fileName, certificateName, minCircleSize, memberName);
+    parseRequest(host, port, action, fileName, certificateName, minCircleSize, 
+        memberName);
     
     return EXIT_SUCCESS;
 }
