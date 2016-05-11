@@ -117,6 +117,8 @@ class ThreadedHandler implements Runnable {
         } catch(Exception e) {
             e.printStackTrace();
         }
+        
+        /*
         //Set up inStream scanner and read client's instructions
         Scanner in = new Scanner(inStream);
         PrintWriter out = new PrintWriter(outStream, true);
@@ -124,13 +126,16 @@ class ThreadedHandler implements Runnable {
         
         //Echo client input
         String line = null;
+        line = parse(inStream);
         if(in.hasNextLine()) line = in.nextLine().trim();
+        System.out.println(line);
+        
         while(!line.equals("BYE")) {
             out.println("Echo: " + line);
             if(in.hasNextLine()) line = in.nextLine();
         }
         //Client has said "BYE"
-        out.println("BYE");
+        out.println("BYE");*/
         
         //Close connection
         try {
