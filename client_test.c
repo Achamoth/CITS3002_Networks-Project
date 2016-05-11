@@ -41,6 +41,12 @@ int main(void) {
         error("Error connecting");
     }
     
+    //Send byte (lol) to server, have server send it back, and print it
+    int t = 5;
+    write(sd, &t, sizeof(int));
+    read(sd, &t, sizeof(int));
+    printf("%d\n", t);
+    
     /*char line[256];
     scanf("%s", line);
     

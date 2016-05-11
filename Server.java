@@ -118,6 +118,15 @@ class ThreadedHandler implements Runnable {
             e.printStackTrace();
         }
         
+        //Read byte of data off inStream (from client) and send it to outStream (back to client)
+        int b = 0;
+        try {
+            b = inStream.read();
+            outStream.write(b);
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+        
         /*
         //Set up inStream scanner and read client's instructions
         Scanner in = new Scanner(inStream);
