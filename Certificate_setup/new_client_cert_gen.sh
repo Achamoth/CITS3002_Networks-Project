@@ -8,7 +8,7 @@
 
 hr="- - - - - - - - - - - - - - - - - - - - - - -"
 br=""
-strength=2048
+strength=1024
 validFor=365
 
 infoMessage="Usage:  sh new_client_cert_gen.sh [client_name@domain.com]"

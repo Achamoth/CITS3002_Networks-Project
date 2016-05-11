@@ -7,7 +7,7 @@
 
 hr="- - - - - - - - - - - - - - - - - - - - - - -"
 br=""
-strength=2048
+strength=1024
 valid=365
 
 mkdir ca
@@ -15,12 +15,6 @@ mkdir server
 mkdir server/certificates
 mkdir server/keys
 mkdir server/requests
-
-mkdir client
-mkdir client/certificates
-mkdir client/keys
-mkdir client/requests
-
 
 echo '100001' > serial
 
