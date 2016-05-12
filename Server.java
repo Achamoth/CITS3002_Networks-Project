@@ -42,54 +42,77 @@ public class Server {
 		}
 	}
     
+    //IGNORE BELOW CODE FOR NOW
     /*Class saves file to disk, reading from Socket 's'
-    Code taken from http://www.coderanch.com/t/591112/sockets/java/File-transfer-Client-Server-side */
+     Code taken from http://www.coderanch.com/t/591112/sockets/java/File-transfer-Client-Server-side
+     public static void saveFile(Socket s) throws Exception {
+     ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());
+     ObjectInputStream ois = new ObjectInputStream(s.getInputStream());
+     FileOutputStream fos = null;
+     byte[] buffer = new byte[BUFFER_SIZE];
+     
+     //Read file name
+     Object o = ois.readObject();
+     
+     if(o instanceof String) {
+     fos = new FileOutputStream(o.toString());
+     }
+     else {
+     throwException("Something is wrong");
+     }
+     
+     //Read file till all bytes are finished
+     Integer bytesRead = 0;
+     
+     do {
+     o = ois.readObject();
+     
+     if(!(o instanceof Integer)) {
+     throwException("Something is wrong");
+     }
+     
+     bytesRead = (Integer) o;
+     
+     o = ois.readObject();
+     
+     if(!(o instanceof byte[])) {
+     throwException("Something is wrong");
+     }
+     
+     buffer = (byte[]) o;
+     
+     //Write data to output file
+     fos.write(buffer, 0, bytesRead);
+     
+     } while (bytesRead == BUFFER_SIZE);
+     
+     System.out.println("File transfer success");
+     
+     fos.close();
+     ois.close();
+     oos.close();
+     }*/
+    
+    //Takes socket as parameter and saves file to disk
     public static void saveFile(Socket s) throws Exception {
-        ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());
-        ObjectInputStream ois = new ObjectInputStream(s.getInputStream());
+        InputStream inStream = s.getInputStream();
         FileOutputStream fos = null;
-        byte[] buffer = new byte[BUFFER_SIZE];
         
-        //Read file name
-        Object o = ois.readObject();
-        
-        if(o instanceof String) {
-            fos = new FileOutputStream(o.toString());
-        }
-        else {
-            throwException("Something is wrong");
-        }
+        //Use default filename "file1" for now (change this later)
+        fos = new FileOutputStream("file1");
         
         //Read file till all bytes are finished
-        Integer bytesRead = 0;
-        
-        do {
-            o = ois.readObject();
-            
-            if(!(o instanceof Integer)) {
-                throwException("Something is wrong");
+        while (true) {
+            try{
+                int b = inStream.read();
+                if(b == -1) break;
+                fos.write(b);
+            } catch(Exception e) {
+                e.printStackTrace();
             }
-            
-            bytesRead = (Integer) o;
-            
-            o = ois.readObject();
-            
-            if(!(o instanceof byte[])) {
-                throwException("Something is wrong");
-            }
-            
-            buffer = (byte[]) o;
-            
-            //Write data to output file
-            fos.write(buffer, 0, bytesRead);
-            
-        } while (bytesRead == BUFFER_SIZE);
-        
-        System.out.println("File transfer success");
+        }
         
         fos.close();
-        ois.close();
-        oos.close();
     }
     
     public static void throwException(String message) throws Exception {
@@ -118,15 +141,26 @@ class ThreadedHandler implements Runnable {
             e.printStackTrace();
         }
         
-        //Read byte of data off inStream (from client) and send it to outStream (back to client)
+        //Read byte of data off inStream (from client) and decode it to determine what client wants
         int b = 0;
         try {
             b = inStream.read();
-            outStream.write(b);
         } catch(Exception e) {
             e.printStackTrace();
         }
         
+        switch(b) {
+            case 1 :
+                //Client wants to send file
+                try {
+                    Server.saveFile(incoming);
+                } catch(Exception e) {
+                    e.printStackTrace();
+                }
+                break;
+        }
+        
+        //THIS STUFF DOESN'T WORK WHEN THE CLIENT IS WRITTEN IN C. IGNORE FOR NOW
         /*
         //Set up inStream scanner and read client's instructions
         Scanner in = new Scanner(inStream);
@@ -153,18 +187,5 @@ class ThreadedHandler implements Runnable {
             e.printStackTrace();
         }
         System.out.println("Closed connection on server side");
-        
-        
-        /*Decode instruction
-        switch(line) {
-            case "Upload file":
-                try {
-                    Server.saveFile(incoming);
-                } catch(Exception e) {
-                    e.printStackTrace();
-                }
-                break;
-            //Continue writing cases
-        }*/
     }
 }
