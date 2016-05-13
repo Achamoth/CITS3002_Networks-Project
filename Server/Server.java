@@ -10,6 +10,8 @@ public class Server {
     private static final int PORT = 8189;
     private static final int BUFFER_SIZE = 100;
     
+    private static final int ACKNOWLEDGMENT = 10;
+    
 	public static void main(String[] args) {
 		
 		//Establish new socket that monitors specified port
@@ -96,13 +98,17 @@ public class Server {
     //Takes socket as parameter and saves file to disk
     public static void saveFile(Socket s) throws Exception {
         InputStream inStream = s.getInputStream();
+        OutputStream outStream = s.getOutputStream();
         FileOutputStream fos = null;
         
         //Read file name off socket
         BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
-        //FIX THIS LINE
-        //String filename = in.readLine();
-        fos = new FileOutputStream("file1");
+        String filename = in.readLine().trim();
+        System.out.println(filename);
+        fos = new FileOutputStream(filename);
+        
+        //Send ack back to client (doesn't work properly; client receives completely different number). This step is necessary to ensure filename and file are sent separately
+        outStream.write(ACKNOWLEDGMENT);
         
         //Read file till all bytes are finished
         while (true) {
@@ -115,7 +121,10 @@ public class Server {
             }
         }
         
+        //Close relevant resources
         fos.close();
+        in.close();
+        inStream.close();
     }
     
     //Takes socket as parameter and sends requested file through it
@@ -137,6 +146,9 @@ public class Server {
 
 //Class handles client input for one server socket connection (allowing for multiple simultaneous client connections)
 class ThreadedHandler implements Runnable {
+    private static final int UPLOAD = 1;
+    private static final int DOWNLOAD = 2;
+    
 	private Socket incoming;
 	
 	//Constructs handler
@@ -165,7 +177,7 @@ class ThreadedHandler implements Runnable {
         }
         
         switch(b) {
-            case 1 :
+            case UPLOAD :
                 //Client wants to send file
                 try {
                     Server.saveFile(incoming);
@@ -173,7 +185,7 @@ class ThreadedHandler implements Runnable {
                     e.printStackTrace();
                 }
                 break;
-            case 2:
+            case DOWNLOAD:
                 //Client wants to download file
                 try {
                     Server.sendFile(incoming);
@@ -182,26 +194,6 @@ class ThreadedHandler implements Runnable {
                 }
                 break;
         }
-        
-        //THIS STUFF DOESN'T WORK WHEN THE CLIENT IS WRITTEN IN C. IGNORE FOR NOW
-        /*
-        //Set up inStream scanner and read client's instructions
-        Scanner in = new Scanner(inStream);
-        PrintWriter out = new PrintWriter(outStream, true);
-        out.println("Hi. Enter BYE to exit");
-        
-        //Echo client input
-        String line = null;
-        line = parse(inStream);
-        if(in.hasNextLine()) line = in.nextLine().trim();
-        System.out.println(line);
-        
-        while(!line.equals("BYE")) {
-            out.println("Echo: " + line);
-            if(in.hasNextLine()) line = in.nextLine();
-        }
-        //Client has said "BYE"
-        out.println("BYE");*/
         
         //Close connection
         try {

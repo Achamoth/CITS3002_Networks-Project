@@ -12,6 +12,7 @@
 
 #define UPLOAD 1
 #define DOWNLOAD 2
+#define ACKNOWLEDGMENT 10
 
 #define PORT 8189
 
@@ -73,12 +74,33 @@ int main(int argc, char *argv[]) {
 
 //Send file (indicated by filename) to server, using open socket descriptor 'sd'
 void sendFile(int sd, char *filename) {
+    int success;
+    
     //First send the action number, so the server knows what to expect
     int action = UPLOAD;
-    write(sd, &action, sizeof(int));
+    success = write(sd, &action, sizeof(int));
+    if(success<0) {
+        printf("Error sending action number\n");
+    }
     
     //Now, send filename (this should be edited to include only the filename, and not the filepath)
-    write(sd, filename, sizeof(char) * strlen(filename));
+    char *filename_to_server = strdup(filename);
+    filename_to_server[strlen(filename_to_server)] = '\n'; //'\n' necessary for readLine() to work in server
+    success = write(sd, filename_to_server, sizeof(char) * strlen(filename_to_server));
+    if(success<0) {
+        printf("Error sending filename\n");
+    }
+    
+    //Wait for server to send acknowledgment (doesn't work properly. The number received here is different to the number sent from the server). This step is necessary to ensure server processes filename and file separately
+    int response;
+    success = read(sd, &response, sizeof(int));
+    if(success<0) {
+        printf("Error receiving acknowledgment\n");
+    }
+    /*if(response != ACKNOWLEDGMENT) {
+        printf("Error. Acknowledgment not received\n");
+        printf("%d\n", response);
+    }*/
     
     //Now, open file
     FILE *fpin = fopen(filename, "rb");
@@ -99,7 +121,10 @@ void sendFile(int sd, char *filename) {
     }
     
     //Now, send array (containing file data) to server
-    write(sd, file, sizeof(char) * i);
+    success = write(sd, file, sizeof(char) * i);
+    if(success<0) {
+        printf("Error sending file\n");
+    }
     
     //Free allocated memory
     fclose(fpin);
