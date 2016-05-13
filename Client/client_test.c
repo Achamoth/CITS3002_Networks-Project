@@ -11,8 +11,12 @@
 #include <unistd.h>
 
 #define UPLOAD 1
+#define DOWNLOAD 2
 
 #define PORT 8189
+
+void sendFile(int sd, char *filename);
+void downloadFile(int sd, char *filename);
 
 void error(char *msg) {
     perror(msg);
@@ -50,13 +54,34 @@ int main(int argc, char *argv[]) {
         error("Error connecting");
     }
     
-    /*Send file to server, and have server save it*/
+    if(!strcmp(argv[1], "upload")) {
+        //User wants to upload file. Send file to server, and have server save it
+        sendFile(sd, strdup(argv[2]));
+    }
+    else if(!strcmp(argv[1], "download")) {
+        //User wants to download file. Send filename to server, and have server send requested file
+        downloadFile(sd, strdup(argv[2]));
+    }
+    
+    //Close socket connection
+    shutdown(sd, SHUT_RDWR);
+    close(sd);
+    
+    //Close program
+    return 0;
+}
+
+//Send file (indicated by filename) to server, using open socket descriptor 'sd'
+void sendFile(int sd, char *filename) {
     //First send the action number, so the server knows what to expect
     int action = UPLOAD;
     write(sd, &action, sizeof(int));
     
+    //Now, send filename (this should be edited to include only the filename, and not the filepath)
+    write(sd, filename, sizeof(char) * strlen(filename));
+    
     //Now, open file
-    FILE *fpin = fopen(argv[1], "rb");
+    FILE *fpin = fopen(filename, "rb");
     if(fpin == NULL) {
         printf("Couldn't open file\n");
         exit(EXIT_FAILURE);
@@ -76,31 +101,18 @@ int main(int argc, char *argv[]) {
     //Now, send array (containing file data) to server
     write(sd, file, sizeof(char) * i);
     
-    
-    //IGNORE THIS
-    /*char line[256];
-    scanf("%s", line);
-    
-    while(!strcmp("BYE", line)) {
-        int n = write(sd, line, strlen(line));
-        if(n<0) {
-            error("Error writing to socket");
-        }
-        bzero(line, 256);
-        n = read(sd, line, 255);
-        if(n<0) {
-            error("Error reading from socket");
-        }
-        printf("%s\n", line);
-    }*/
-    
-    //Close socket connection and file pointers
+    //Free allocated memory
     fclose(fpin);
     free(file);
     free(buffer);
-    shutdown(sd, SHUT_RDWR);
-    close(sd);
+}
+
+//Request that server send file (indicated by filename), using open socket descriptor 'sd'
+void downloadFile(int sd, char *filename) {
+    //First send the action number, so the server knows what to expect
+    int action = DOWNLOAD;
+    write(sd, &action, sizeof(int));
     
-    //Close program
-    return 0;
+    //Now, send file name
+    write(sd, filename, sizeof(char)*strlen(filename));
 }

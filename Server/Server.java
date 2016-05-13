@@ -98,7 +98,10 @@ public class Server {
         InputStream inStream = s.getInputStream();
         FileOutputStream fos = null;
         
-        //Use default filename "file1" for now (change this later)
+        //Read file name off socket
+        BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
+        //FIX THIS LINE
+        //String filename = in.readLine();
         fos = new FileOutputStream("file1");
         
         //Read file till all bytes are finished
@@ -113,6 +116,18 @@ public class Server {
         }
         
         fos.close();
+    }
+    
+    //Takes socket as parameter and sends requested file through it
+    public static void sendFile(Socket s) throws Exception {
+        InputStream inStream = s.getInputStream();
+        //FileOutputStream fos = null;
+        
+        //Read filename
+        BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
+        System.out.println(in.readLine());
+        
+        //TODO: Look for file, and send it to client
     }
     
     public static void throwException(String message) throws Exception {
@@ -154,6 +169,14 @@ class ThreadedHandler implements Runnable {
                 //Client wants to send file
                 try {
                     Server.saveFile(incoming);
+                } catch(Exception e) {
+                    e.printStackTrace();
+                }
+                break;
+            case 2:
+                //Client wants to download file
+                try {
+                    Server.sendFile(incoming);
                 } catch(Exception e) {
                     e.printStackTrace();
                 }
