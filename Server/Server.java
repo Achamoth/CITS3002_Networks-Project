@@ -24,6 +24,19 @@ public class Server {
 		
         int i = 1;
         
+        //Print ip address and hostname of current server
+        InetAddress ip;
+        String hostname;
+        try {
+            ip = InetAddress.getLocalHost();
+            hostname = ip.getHostName();
+            System.out.println("Current IP address : " + ip);
+            System.out.println("Current Hostname : " +hostname);
+            System.out.print("\n");
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+        
 		//Main server loop
 		while(true) {
             //Idles until client connects to port
@@ -84,7 +97,6 @@ public class Server {
         //Read filename
         BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
         String filename = in.readLine().trim();
-        System.out.println(filename);
         
         //Find file (for now, I'll assume it's in the local directory) TODO: Extend this
         File f = new File(filename);

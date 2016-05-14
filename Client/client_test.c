@@ -37,8 +37,13 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
     
+    //Ask user to input name of server
+    printf("Please enter hostname of server: ");
+    char hostname[256];
+    scanf("%s", hostname);
+    
     //Acquire host entity data by searching for host name
-    server = gethostbyname("localhost");
+    server = gethostbyname(hostname);
     if(server == NULL) {
         printf("Error: No such host\n");
         exit(EXIT_FAILURE);
