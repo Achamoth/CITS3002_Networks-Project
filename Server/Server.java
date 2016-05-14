@@ -44,57 +44,6 @@ public class Server {
 		}
 	}
     
-    //IGNORE BELOW CODE FOR NOW
-    /*Class saves file to disk, reading from Socket 's'
-     Code taken from http://www.coderanch.com/t/591112/sockets/java/File-transfer-Client-Server-side
-     public static void saveFile(Socket s) throws Exception {
-     ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());
-     ObjectInputStream ois = new ObjectInputStream(s.getInputStream());
-     FileOutputStream fos = null;
-     byte[] buffer = new byte[BUFFER_SIZE];
-     
-     //Read file name
-     Object o = ois.readObject();
-     
-     if(o instanceof String) {
-     fos = new FileOutputStream(o.toString());
-     }
-     else {
-     throwException("Something is wrong");
-     }
-     
-     //Read file till all bytes are finished
-     Integer bytesRead = 0;
-     
-     do {
-     o = ois.readObject();
-     
-     if(!(o instanceof Integer)) {
-     throwException("Something is wrong");
-     }
-     
-     bytesRead = (Integer) o;
-     
-     o = ois.readObject();
-     
-     if(!(o instanceof byte[])) {
-     throwException("Something is wrong");
-     }
-     
-     buffer = (byte[]) o;
-     
-     //Write data to output file
-     fos.write(buffer, 0, bytesRead);
-     
-     } while (bytesRead == BUFFER_SIZE);
-     
-     System.out.println("File transfer success");
-     
-     fos.close();
-     ois.close();
-     oos.close();
-     }*/
-    
     //Takes socket as parameter and saves file to disk
     public static void saveFile(Socket s) throws Exception {
         InputStream inStream = s.getInputStream();
@@ -104,7 +53,6 @@ public class Server {
         //Read file name off socket
         BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
         String filename = in.readLine().trim();
-        System.out.println(filename);
         fos = new FileOutputStream(filename);
         
         //Send ack back to client (doesn't work properly; client receives completely different number). This step is necessary to ensure filename and file are sent separately
@@ -130,13 +78,41 @@ public class Server {
     //Takes socket as parameter and sends requested file through it
     public static void sendFile(Socket s) throws Exception {
         InputStream inStream = s.getInputStream();
-        //FileOutputStream fos = null;
+        OutputStream outStream = s.getOutputStream();
+        FileInputStream fis = null;
         
         //Read filename
         BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
-        System.out.println(in.readLine());
+        String filename = in.readLine().trim();
+        System.out.println(filename);
         
-        //TODO: Look for file, and send it to client
+        //Find file (for now, I'll assume it's in the local directory) TODO: Extend this
+        File f = new File(filename);
+        
+        //Make sure file exists
+        boolean fileExists = f.exists() && !f.isDirectory();
+        if(!fileExists) {
+            //If it doesn't, tell client file doesn't exist
+            //TODO: Above
+        }
+        
+        //Otherwise, send file byte by byte
+        fis = new FileInputStream(f);
+        try {
+            while(true) {
+                int b = fis.read();
+                if(b == -1) break;
+                outStream.write(b);
+            }
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+        
+        //Close relevant resources
+        fis.close();
+        in.close();
+        inStream.close();
+        outStream.close();
     }
     
     public static void throwException(String message) throws Exception {

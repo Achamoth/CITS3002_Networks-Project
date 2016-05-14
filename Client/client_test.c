@@ -109,7 +109,7 @@ void sendFile(int sd, char *filename) {
         exit(EXIT_FAILURE);
     }
     //Now, read file into array, one byte at a time
-    char * file = (char *) malloc (sizeof(char));
+    char *file = (char *) malloc (sizeof(char));
     char *buffer = (char *) malloc(sizeof(char));
     int noBytesRead;
     noBytesRead = fread(buffer, 1, 1, fpin);
@@ -126,7 +126,7 @@ void sendFile(int sd, char *filename) {
         printf("Error sending file\n");
     }
     
-    //Free allocated memory
+    //Free allocated memory and close resources
     fclose(fpin);
     free(file);
     free(buffer);
@@ -134,10 +134,37 @@ void sendFile(int sd, char *filename) {
 
 //Request that server send file (indicated by filename), using open socket descriptor 'sd'
 void downloadFile(int sd, char *filename) {
+    int success;
+    
     //First send the action number, so the server knows what to expect
     int action = DOWNLOAD;
     write(sd, &action, sizeof(int));
     
     //Now, send file name
-    write(sd, filename, sizeof(char)*strlen(filename));
+    char *filename_to_server = strdup(filename);
+    filename_to_server[strlen(filename_to_server)] = '\n';
+    success = write(sd, filename_to_server, sizeof(char)*strlen(filename_to_server));
+    if(success<0) {
+        printf("Error sending action number\n");
+    }
+    
+    //Wait for server to send file, and read it one byte at a time
+    char *file = (char *) malloc(sizeof(char));
+    char *buffer = (char *) malloc(sizeof(char));
+    int n; int i=0;
+    n = read(sd, buffer, sizeof(char));
+    while(n > 0) {
+        file[i++] = *buffer;
+        n = read(sd, buffer, sizeof(char));
+        file = realloc(file, (i+1)*sizeof(char));
+    }
+    
+    //When server has finished sending file, write array (containing file contents) out to file
+    FILE *fpout = fopen(filename, "w");
+    fwrite(file, i, sizeof(char), fpout);
+    
+    //Free all memory and close resources
+    fclose(fpout);
+    free(file);
+    free(buffer);
 }
