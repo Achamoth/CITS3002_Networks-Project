@@ -18,6 +18,7 @@
 
 void sendFile(int sd, char *filename);
 void downloadFile(int sd, char *filename);
+int readResponse(int sd);
 
 void error(char *msg) {
     perror(msg);
@@ -98,20 +99,14 @@ void sendFile(int sd, char *filename) {
         exit(EXIT_FAILURE);
     }
     
-    //Wait for server to send acknowledgment (NOT WORKING)
-    int response;
-    success = read(sd, &response, sizeof(response));
-    printf("%d\n", ntohl(response));
+    //Wait for server to send repsponse
+    int response = readResponse(sd);
     
-    //Ensure acknowledgment arrived successfully
-    if(success<0) {
-        printf("Error receiving acknowledgment\n");
-        exit(EXIT_FAILURE);
-    }
-    /*if(response != ACKNOWLEDGMENT) {
+    //Confirm response is a positive acknowledgment
+    if(response != ACKNOWLEDGMENT) {
         printf("Error. Acknowledgment not received\n");
         printf("%d\n", response);
-    }*/
+    }
     
     //Now, open file
     FILE *fpin = fopen(filename, "rb");
@@ -119,24 +114,6 @@ void sendFile(int sd, char *filename) {
         printf("Couldn't open file\n");
         exit(EXIT_FAILURE);
     }
-    
-    /*Now, read file into array, one byte at a time
-    char *file = (char *) malloc (sizeof(char));
-    char *buffer = (char *) malloc(sizeof(char));
-    int noBytesRead;
-    noBytesRead = fread(buffer, 1, 1, fpin);
-    int i=0;
-    while(noBytesRead != 0) {
-        file[i++] = *buffer;
-        noBytesRead = fread(buffer, 1, 1, fpin);
-        file = realloc(file, (i+1)*sizeof(char));
-    }
-    
-    //Now, send array (containing file data) to server
-    success = write(sd, file, sizeof(char) * i);
-    if(success<0) {
-        printf("Error sending file\n");
-    }*/
     
     //Send file to server, one byte at a time
     char *buffer = (char *) malloc(sizeof(char));
@@ -168,6 +145,10 @@ void downloadFile(int sd, char *filename) {
         printf("Error sending action number\n");
     }
     
+    //TODO: Wait for server to send response (indentifying whether or not it has the file)
+    int response;
+    
+    
     //Wait for server to send file, and read it one byte at a time, writing each byte to file as it comes in
     FILE *fpout = fopen(filename, "wb");
     char *buffer = (char *) malloc(sizeof(char));
@@ -181,4 +162,24 @@ void downloadFile(int sd, char *filename) {
     //Free all memory and close resources
     fclose(fpout);
     free(buffer);
+}
+
+/*
+ *Give function a socket descriptor when expecting an int response from server
+ *Function reads socket descriptor and returns int response (when it arrives)
+ */
+int readResponse(int sd) {
+    //Reads network-byte-order int off socket stream, and converts it to host-byte-order int before returning
+    char intBuffer[4]; //Byte array for reading int
+    int i=0;
+    int receivedBytes = 0; //Counts number of bytes read (Java's writeInt() method sends 4-byte int, so we need to read 4 bytes)
+    while(receivedBytes < 4){
+        int readBytes = read(sd, &intBuffer[i++], (sizeof intBuffer) - receivedBytes);
+        receivedBytes += readBytes;
+    }
+    //Convert byte-array to int
+    int receivedInt = *(int *) intBuffer;
+    
+    //Converts int to host-byte-order and returns
+    return ntohl(receivedInt);
 }
