@@ -7,13 +7,19 @@ import java.util.*;
 //Code ideas for server taken from "Core Java: Volume 2. Chapter 3: Networking"
 public class Server {
 
-    private static final int PORT = 8189;
+    private static final int PORT = 8889;
     private static final int BUFFER_SIZE = 100;
     
     private static final int ACKNOWLEDGMENT = 10;
     
+    private static ArrayList<ServerFile> files;
+    
 	public static void main(String[] args) {
-		
+        //Initialize file list
+        files = new ArrayList<ServerFile>();
+        
+        //TODO: Read csv file containing 'files' data
+        
 		//Establish new socket that monitors specified port
         ServerSocket s = null;
         try {
@@ -55,6 +61,8 @@ public class Server {
             t.start();
             i++;
 		}
+        
+        //TODO: Write 'files' data to csv file
 	}
     
     //Takes socket as parameter and saves file to disk
@@ -68,8 +76,9 @@ public class Server {
         String filename = in.readLine().trim();
         fos = new FileOutputStream(filename);
         
-        //Send ack back to client (doesn't work properly; client receives completely different number). This step is necessary to ensure filename and file are sent separately
-        outStream.write(ACKNOWLEDGMENT);
+        //Send ack back to client (NOT WORKING)
+        DataOutputStream dos = new DataOutputStream(outStream);
+        dos.writeInt(ACKNOWLEDGMENT);
         
         //Read file till all bytes are finished
         while (true) {
@@ -82,9 +91,13 @@ public class Server {
             }
         }
         
+        //Record file in server's file list
+        ServerFile file = new ServerFile(filename);
+        
         //Close relevant resources
         fos.close();
         in.close();
+        outStream.close();
         inStream.close();
     }
     
@@ -107,6 +120,8 @@ public class Server {
             //If it doesn't, tell client file doesn't exist
             //TODO: Above
         }
+        
+        //TODO: Check that file satisfies client's trust requirements
         
         //Otherwise, send file byte by byte
         fis = new FileInputStream(f);
