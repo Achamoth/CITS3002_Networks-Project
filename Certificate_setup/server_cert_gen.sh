@@ -4,6 +4,8 @@
 #
 #  Created by George Krlevski on 11/05/2016.
 #
+# Reference (Joshua Boverhof, http://dst.lbl.gov/~boverhof/openssl_certs.html )
+
 hr="- - - - - - - - - - - - - - - - - - - - - - -"
 br=""
 strength=1024

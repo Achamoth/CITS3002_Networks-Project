@@ -3,7 +3,7 @@
 #
 #  Created by George Krlevski on 11/05/2016.
 #
-
+# Reference: (webmaster ,http://www.flatmtn.com/article/setting-openssl-create-certificates#SSLCert-1 )
 
 hr="- - - - - - - - - - - - - - - - - - - - - - -"
 br=""

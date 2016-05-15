@@ -1,6 +1,7 @@
 #
 # OpenSSL configuration file.
 #
+# Reference: (webmaster ,http://www.flatmtn.com/article/setting-openssl-create-certificates#SSLCert-1 )
 
 # Establish working directory.
 
