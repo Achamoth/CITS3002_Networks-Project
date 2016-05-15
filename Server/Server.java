@@ -114,7 +114,6 @@ public class Server {
             ServerFile file = new ServerFile(filename);
             files.add(file);
         }
-        //TODO: If file is a certificate.......lots of stuff
         
         //Close relevant resources
         fos.close();
