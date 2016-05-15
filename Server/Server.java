@@ -11,6 +11,8 @@ public class Server {
     private static final int BUFFER_SIZE = 100;
     
     private static final int ACKNOWLEDGMENT = 10;
+    private static final int FILE_TRUSTWORTHY = 8;
+    private static final int FILE_UNTRUSTWORTHY = 9;
     private static final int FILE_NOT_FOUND = 15;
     private static final int FILE_FOUND = 16;
     
@@ -126,7 +128,13 @@ public class Server {
         }
         dos.writeInt(FILE_FOUND);
         
-        //TODO: Check that file satisfies client's trust requirements
+        //Check that file satisfies client's trust requirements
+        boolean trustworthy = checkTrust(filename);
+        if(!trustworthy) {
+            dos.writeInt(FILE_UNTRUSTWORTHY);
+            return ;
+        }
+        dos.writeInt(FILE_TRUSTWORTHY);
         
         //Otherwise, send file byte by byte
         fis = new FileInputStream(f);
@@ -150,6 +158,27 @@ public class Server {
     
     public static void throwException(String message) throws Exception {
         throw new Exception(message);
+    }
+    
+    private static boolean checkTrust(String filename) {
+        //Activate below code when I develop ServerFile further
+        /*ServerFile f = findFile(filename);
+        if(f == null) {
+            //Oh oh. This should never really happen
+        }*/
+        
+        //TODO: Check circle size on file against client specifications
+        //TODO: Check if any circle contain required member (if client has specified one)
+        return true; //For now
+    }
+    
+    private static ServerFile findFile(String filename) {
+        for(ServerFile f : files) {
+            if(f.getFilename().trim().equals(filename)) {
+                return f;
+            }
+        }
+        return null;
     }
 }
 

@@ -12,6 +12,8 @@
 
 #define UPLOAD 1
 #define DOWNLOAD 2
+#define FILE_TRUSTWORTHY 8
+#define FILE_UNTRUSTWORTHY 9
 #define ACKNOWLEDGMENT 10
 #define FILE_NOT_FOUND 15
 #define FILE_FOUND 16
@@ -89,6 +91,8 @@ void sendFile(int sd, char *filename) {
     success = write(sd, &action, sizeof(int));
     if(success<0) {
         printf("Error sending action number\n");
+        shutdown(sd, SHUT_RDWR);
+        close(sd);
         exit(EXIT_FAILURE);
     }
     
@@ -98,6 +102,8 @@ void sendFile(int sd, char *filename) {
     success = write(sd, filename_to_server, sizeof(char) * strlen(filename_to_server));
     if(success<0) {
         printf("Error sending filename\n");
+        shutdown(sd, SHUT_RDWR);
+        close(sd);
         exit(EXIT_FAILURE);
     }
     
@@ -108,12 +114,17 @@ void sendFile(int sd, char *filename) {
     if(response != ACKNOWLEDGMENT) {
         printf("Error. Acknowledgment not received\n");
         printf("%d\n", response);
+        shutdown(sd, SHUT_RDWR);
+        close(sd);
+        exit(EXIT_FAILURE);
     }
     
     //Now, open file
     FILE *fpin = fopen(filename, "rb");
     if(fpin == NULL) {
         printf("Couldn't open file\n");
+        shutdown(sd, SHUT_RDWR);
+        close(sd);
         exit(EXIT_FAILURE);
     }
     
@@ -145,14 +156,29 @@ void downloadFile(int sd, char *filename) {
     success = write(sd, filename_to_server, sizeof(char)*strlen(filename_to_server));
     if(success<0) {
         printf("Error sending action number\n");
+        shutdown(sd, SHUT_RDWR);
+        close(sd);
+        exit(EXIT_FAILURE);
     }
     
-    //TODO: Wait for server to send response (indentifying whether or not it has the file)
+    //Wait for server to send response (indentifying whether or not it has the file)
     int response;
     response = readResponse(sd);
     if(response != FILE_FOUND) {
         if(response == FILE_NOT_FOUND) printf("Error. Requested file doesn't exist on server\n");
         else printf("Unkown error occured. %d\n", response);
+        shutdown(sd, SHUT_RDWR);
+        close(sd);
+        exit(EXIT_FAILURE);
+    }
+    
+    //Wait for server to report whether or not file meets trust requirements (DOESN'T WORK PROPERLY)
+    response = readResponse(sd);
+    if(response != FILE_TRUSTWORTHY) {
+        if(response == FILE_UNTRUSTWORTHY) printf("The file does not meet the specified trust requirements\n");
+        else printf("Unknown error occured. %d\n", response);
+        shutdown(sd, SHUT_RDWR);
+        close(sd);
         exit(EXIT_FAILURE);
     }
     
