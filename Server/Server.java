@@ -11,6 +11,8 @@ public class Server {
     private static final int BUFFER_SIZE = 100;
     
     private static final int ACKNOWLEDGMENT = 10;
+    private static final int FILE_NOT_FOUND = 15;
+    private static final int FILE_FOUND = 16;
     
     private static ArrayList<ServerFile> files;
     
@@ -105,6 +107,7 @@ public class Server {
     public static void sendFile(Socket s) throws Exception {
         InputStream inStream = s.getInputStream();
         OutputStream outStream = s.getOutputStream();
+        DataOutputStream dos = new DataOutputStream(outStream);
         FileInputStream fis = null;
         
         //Read filename
@@ -118,8 +121,10 @@ public class Server {
         boolean fileExists = f.exists() && !f.isDirectory();
         if(!fileExists) {
             //If it doesn't, tell client file doesn't exist
-            //TODO: Above
+            dos.writeInt(FILE_NOT_FOUND);
+            return ;
         }
+        dos.writeInt(FILE_FOUND);
         
         //TODO: Check that file satisfies client's trust requirements
         
@@ -136,6 +141,7 @@ public class Server {
         }
         
         //Close relevant resources
+        dos.close();
         fis.close();
         in.close();
         inStream.close();

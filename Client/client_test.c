@@ -13,6 +13,8 @@
 #define UPLOAD 1
 #define DOWNLOAD 2
 #define ACKNOWLEDGMENT 10
+#define FILE_NOT_FOUND 15
+#define FILE_FOUND 16
 
 #define PORT 8889
 
@@ -147,7 +149,12 @@ void downloadFile(int sd, char *filename) {
     
     //TODO: Wait for server to send response (indentifying whether or not it has the file)
     int response;
-    
+    response = readResponse(sd);
+    if(response != FILE_FOUND) {
+        if(response == FILE_NOT_FOUND) printf("Error. Requested file doesn't exist on server\n");
+        else printf("Unkown error occured. %d\n", response);
+        exit(EXIT_FAILURE);
+    }
     
     //Wait for server to send file, and read it one byte at a time, writing each byte to file as it comes in
     FILE *fpout = fopen(filename, "wb");
