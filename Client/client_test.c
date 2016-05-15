@@ -23,14 +23,100 @@
 void sendFile(int sd, char *filename);
 void downloadFile(int sd, char *filename);
 int readResponse(int sd);
+int connectToServer(char *hostname);
+int connectToHost(char *hostname);
 
 void error(char *msg) {
     perror(msg);
     exit(EXIT_FAILURE);
 }
 
-//Some ideas borrowed from http://www.cs.rpi.edu/~moorthy/Courses/os98/Pgms/socket.html and http://stackoverflow.com/questions/26190337/connect-function-fails-when-passing-sockaddr-in-as-argument
 int main(int argc, char *argv[]) {
+    //Ask user to input name of server
+    printf("Please enter hostname of server: ");
+    char hostname[256];
+    scanf("%s", hostname);
+    
+    //Connect to server
+    int sd = connectToServer(hostname);
+    
+    //Execute user commands
+    if(!strcmp(argv[1], "upload")) {
+        //User wants to upload file. Send file to server, and have server save it
+        sendFile(sd, strdup(argv[2]));
+    }
+    else if(!strcmp(argv[1], "download")) {
+        //User wants to download file. Send filename to server, and have server send requested file
+        downloadFile(sd, strdup(argv[2]));
+    }
+    
+    //Close socket connection
+    shutdown(sd, SHUT_RDWR);
+    close(sd);
+    
+    //Close program
+    return 0;
+}
+
+/*Given the hostname of a server, connect to the server, and return the connected socket descriptor
+ *http://beej.us/guide/bgnet/output/html/multipage/getaddrinfoman.html
+ */
+int connectToServer(char *hostname) {
+    //Set up necessary data
+    struct addrinfo hints, *servinfo, *p;
+    int success;
+    int sd;
+    
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    
+    //Convert port to string
+    char port[5];
+    snprintf(port, 5, "%d", PORT);
+    
+    //Find host info and store it in servinfo struct
+    if((success = getaddrinfo(hostname, port, &hints, &servinfo)) != 0) {
+        //Error in getaddrinfo. Couldn't find host
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(success));
+        exit(EXIT_FAILURE);
+    }
+    
+    //Loop through all the results and connect to the first one that we can
+    for(p = servinfo; p!=NULL; p = p->ai_next) {
+        if((sd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+            perror("socket");
+            continue;
+        }
+        
+        if(connect(sd, p->ai_addr, p->ai_addrlen) == -1) {
+            perror("connect");
+            close(sd);
+            continue;
+        }
+        //If we get here, we must have connected successfully
+        break;
+    }
+    
+    if(p == NULL) {
+        //Failed to connect to any of the results
+        printf("Failed to connect\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    //Free memory
+    freeaddrinfo(servinfo);
+    
+    return sd; //Return socket descriptor
+}
+
+/*Connects to server, given a hostname, and returns connected socket descriptor
+ *Basically does the same thing as connectToServer(), but uses gethostbyname() instead of getaddrinfo()
+ *http://stackoverflow.com/questions/26190337/connect-function-fails-when-passing-sockaddr-in-as-argument
+ *http://www.cs.rpi.edu/~moorthy/Courses/os98/Pgms/socket.html
+ */
+int connectToHost(char *hostname) {
     //Required variables for socket connection
     int port = PORT;
     struct sockaddr_in server_address;
@@ -42,11 +128,6 @@ int main(int argc, char *argv[]) {
         perror("Error: ");
         exit(EXIT_FAILURE);
     }
-    
-    //Ask user to input name of server
-    printf("Please enter hostname of server: ");
-    char hostname[256];
-    scanf("%s", hostname);
     
     //Acquire host entity data by searching for host name
     server = gethostbyname(hostname);
@@ -66,21 +147,7 @@ int main(int argc, char *argv[]) {
         error("Error connecting");
     }
     
-    if(!strcmp(argv[1], "upload")) {
-        //User wants to upload file. Send file to server, and have server save it
-        sendFile(sd, strdup(argv[2]));
-    }
-    else if(!strcmp(argv[1], "download")) {
-        //User wants to download file. Send filename to server, and have server send requested file
-        downloadFile(sd, strdup(argv[2]));
-    }
-    
-    //Close socket connection
-    shutdown(sd, SHUT_RDWR);
-    close(sd);
-    
-    //Close program
-    return 0;
+    return sd;
 }
 
 //Send file (indicated by filename) to server, using open socket descriptor 'sd'
