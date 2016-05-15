@@ -18,5 +18,9 @@ public class ServerFile {
         //Add client and their certificate signer to graph
     }
     
+    public String getFilename() {
+        return this.filename;
+    }
+    
     //TODO: A method that searches the graph and returns an array list of all circles of trust on the file
 }

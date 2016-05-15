@@ -11,6 +11,10 @@ public class Server {
     private static final int BUFFER_SIZE = 100;
     
     private static final int ACKNOWLEDGMENT = 10;
+    private static final int FILE_TRUSTWORTHY = 8;
+    private static final int FILE_UNTRUSTWORTHY = 9;
+    private static final int FILE_NOT_FOUND = 15;
+    private static final int FILE_FOUND = 16;
     
     private static ArrayList<ServerFile> files;
     
@@ -30,7 +34,7 @@ public class Server {
 		
         int i = 1;
         
-        //Print ip address and hostname of current server
+        //Print ip address and hostname of current server http://crunchify.com/how-to-get-server-ip-address-and-hostname-in-java/
         InetAddress ip;
         String hostname;
         try {
@@ -105,6 +109,7 @@ public class Server {
     public static void sendFile(Socket s) throws Exception {
         InputStream inStream = s.getInputStream();
         OutputStream outStream = s.getOutputStream();
+        DataOutputStream dos = new DataOutputStream(outStream);
         FileInputStream fis = null;
         
         //Read filename
@@ -118,10 +123,18 @@ public class Server {
         boolean fileExists = f.exists() && !f.isDirectory();
         if(!fileExists) {
             //If it doesn't, tell client file doesn't exist
-            //TODO: Above
+            dos.writeInt(FILE_NOT_FOUND);
+            return ;
         }
+        dos.writeInt(FILE_FOUND);
         
-        //TODO: Check that file satisfies client's trust requirements
+        //Check that file satisfies client's trust requirements
+        boolean trustworthy = checkTrust(filename);
+        if(!trustworthy) {
+            dos.writeInt(FILE_UNTRUSTWORTHY);
+            return ;
+        }
+        dos.writeInt(FILE_TRUSTWORTHY);
         
         //Otherwise, send file byte by byte
         fis = new FileInputStream(f);
@@ -136,6 +149,7 @@ public class Server {
         }
         
         //Close relevant resources
+        dos.close();
         fis.close();
         in.close();
         inStream.close();
@@ -144,6 +158,27 @@ public class Server {
     
     public static void throwException(String message) throws Exception {
         throw new Exception(message);
+    }
+    
+    private static boolean checkTrust(String filename) {
+        //Activate below code when I develop ServerFile further
+        /*ServerFile f = findFile(filename);
+        if(f == null) {
+            //Oh oh. This should never really happen
+        }*/
+        
+        //TODO: Check circle size on file against client specifications
+        //TODO: Check if any circle contain required member (if client has specified one)
+        return true; //For now
+    }
+    
+    private static ServerFile findFile(String filename) {
+        for(ServerFile f : files) {
+            if(f.getFilename().trim().equals(filename)) {
+                return f;
+            }
+        }
+        return null;
     }
 }
 
