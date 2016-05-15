@@ -114,7 +114,7 @@ public class Server {
             ServerFile file = new ServerFile(filename);
             files.add(file);
         }
-        //TODO: If file is a certificate.......
+        //TODO: If file is a certificate.......lots of stuff
         
         //Close relevant resources
         fos.close();
@@ -255,7 +255,7 @@ class ThreadedHandler implements Runnable {
             case UPLOAD_CERT:
                 //Client wants to sned certificate
                 try {
-                    
+                    Server.saveFile(incoming, true);
                 } catch(Exception e) {
                     e.printStackTrace();
                 }

@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -12,6 +13,7 @@
 
 #define UPLOAD 1
 #define DOWNLOAD 2
+#define UPLOAD_CERT 3
 #define FILE_TRUSTWORTHY 8
 #define FILE_UNTRUSTWORTHY 9
 #define ACKNOWLEDGMENT 10
@@ -20,7 +22,7 @@
 
 #define PORT 8889
 
-void sendFile(int sd, char *filename);
+void sendFile(int sd, char *filename, bool isCert);
 void downloadFile(int sd, char *filename);
 int readResponse(int sd);
 int connectToServer(char *hostname);
@@ -42,9 +44,18 @@ int main(int argc, char *argv[]) {
     
     //Execute user commands
     if(!strcmp(argv[1], "upload")) {
-        //User wants to upload file. Send file to server, and have server save it
-        sendFile(sd, strdup(argv[2]));
+        //Check if file is a certificate
+        if(!strcmp(argv[2], "certificate")) {
+            //File is a certificate. Send file to server, but let server know it's a certificate
+            sendFile(sd, strdup(argv[3]), true);
+        }
+        
+        //File is not a certificate. Send file to server, and have server save it
+        else {
+            sendFile(sd, strdup(argv[2]), false);
+        }
     }
+    
     else if(!strcmp(argv[1], "download")) {
         //User wants to download file. Send filename to server, and have server send requested file
         downloadFile(sd, strdup(argv[2]));
@@ -151,11 +162,13 @@ int connectToHost(char *hostname) {
 }
 
 //Send file (indicated by filename) to server, using open socket descriptor 'sd'
-void sendFile(int sd, char *filename) {
+void sendFile(int sd, char *filename, bool isCert) {
     int success;
     
     //First send the action number, so the server knows what to expect
-    int action = UPLOAD;
+    int action;
+    if(!isCert) action = UPLOAD;
+    else action = UPLOAD_CERT;
     success = write(sd, &action, sizeof(int));
     if(success<0) {
         printf("Error sending action number\n");
