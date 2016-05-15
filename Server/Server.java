@@ -1,6 +1,8 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 //Written by Ammar Abu Shamleh, with reference to resources (all listed and named in relevant sections of code)
 
@@ -70,7 +72,7 @@ public class Server {
 	}
     
     //Takes socket as parameter and saves file to disk
-    public static void saveFile(Socket s) throws Exception {
+    public static void saveFile(Socket s, boolean isCert) throws Exception {
         InputStream inStream = s.getInputStream();
         OutputStream outStream = s.getOutputStream();
         FileOutputStream fos = null;
@@ -78,9 +80,21 @@ public class Server {
         //Read file name off socket
         BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
         String filename = in.readLine().trim();
-        fos = new FileOutputStream(filename);
         
-        //Send ack back to client (NOT WORKING)
+        /* NOT SURE WHAT THIS DOES, HONESTLY, BUT IT SEEMS LIKE IT MIGHT BE USEFUL FOR SOMETHING, SO I'LL LEAVE IT FOR NOW
+        Path currentRelativePath = Paths.get("");
+        String curDir = currentRelativePath.toAbsolutePath().toString();
+        System.out.println("Current relative path is: " + s);
+        */
+        
+        //Create file in correct directory
+        String curPath = System.getProperty("user.dir");
+        String filePath;
+        if(!isCert) filePath = curPath + "/Files/";
+        else filePath = curPath + "/Certificates/";
+        fos = new FileOutputStream(filePath + filename);
+        
+        //Send ack back to client
         DataOutputStream dos = new DataOutputStream(outStream);
         dos.writeInt(ACKNOWLEDGMENT);
         
@@ -95,8 +109,12 @@ public class Server {
             }
         }
         
-        //Record file in server's file list
-        ServerFile file = new ServerFile(filename);
+        //Record file in server's file list if it's a regular file
+        if(!isCert) {
+            ServerFile file = new ServerFile(filename);
+            files.add(file);
+        }
+        //TODO: If file is a certificate.......
         
         //Close relevant resources
         fos.close();
@@ -116,8 +134,10 @@ public class Server {
         BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
         String filename = in.readLine().trim();
         
-        //Find file (for now, I'll assume it's in the local directory) TODO: Extend this
-        File f = new File(filename);
+        //Find file
+        String curPath = System.getProperty("user.dir");
+        String filePath = curPath + "/Files/";
+        File f = new File(filePath + filename);
         
         //Make sure file exists
         boolean fileExists = f.exists() && !f.isDirectory();
@@ -186,6 +206,7 @@ public class Server {
 class ThreadedHandler implements Runnable {
     private static final int UPLOAD = 1;
     private static final int DOWNLOAD = 2;
+    private static final int UPLOAD_CERT = 3;
     
 	private Socket incoming;
 	
@@ -216,9 +237,9 @@ class ThreadedHandler implements Runnable {
         
         switch(b) {
             case UPLOAD :
-                //Client wants to send file
+                //Client wants to send file (not a certificate)
                 try {
-                    Server.saveFile(incoming);
+                    Server.saveFile(incoming, false);
                 } catch(Exception e) {
                     e.printStackTrace();
                 }
@@ -227,6 +248,14 @@ class ThreadedHandler implements Runnable {
                 //Client wants to download file
                 try {
                     Server.sendFile(incoming);
+                } catch(Exception e) {
+                    e.printStackTrace();
+                }
+                break;
+            case UPLOAD_CERT:
+                //Client wants to sned certificate
+                try {
+                    
                 } catch(Exception e) {
                     e.printStackTrace();
                 }
