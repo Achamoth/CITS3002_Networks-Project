@@ -34,7 +34,7 @@ public class Server {
 		
         int i = 1;
         
-        //Print ip address and hostname of current server
+        //Print ip address and hostname of current server http://crunchify.com/how-to-get-server-ip-address-and-hostname-in-java/
         InetAddress ip;
         String hostname;
         try {

@@ -29,6 +29,7 @@ void error(char *msg) {
     exit(EXIT_FAILURE);
 }
 
+//Some ideas borrowed from http://www.cs.rpi.edu/~moorthy/Courses/os98/Pgms/socket.html and http://stackoverflow.com/questions/26190337/connect-function-fails-when-passing-sockaddr-in-as-argument
 int main(int argc, char *argv[]) {
     //Required variables for socket connection
     int port = PORT;
@@ -200,6 +201,7 @@ void downloadFile(int sd, char *filename) {
 /*
  *Give function a socket descriptor when expecting an int response from server
  *Function reads socket descriptor and returns int response (when it arrives)
+ *http://stackoverflow.com/questions/16117681/sending-int-via-socket-from-java-to-c-strange-results
  */
 int readResponse(int sd) {
     //Reads network-byte-order int off socket stream, and converts it to host-byte-order int before returning
