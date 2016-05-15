@@ -8,7 +8,7 @@
 hr="- - - - - - - - - - - - - - - - - - - - - - -"
 br=""
 strength=1024
-valid=365
+validFor=365
 
 mkdir ca
 mkdir server
@@ -41,7 +41,7 @@ echo $hr
 echo "CA SELF-SIGNING AND ISSUING CERTIFICATE"
 echo $hr
 
-openssl x509 -req -days $valid -in ./ca/ca.csr -out ./ca/ca.crt -signkey ./ca/ca.key
+openssl x509 -req -days $validFor -in ./ca/ca.csr -out ./ca/ca.crt -signkey ./ca/ca.key
 
 echo $br
 echo $hr
