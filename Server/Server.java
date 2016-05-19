@@ -3,6 +3,25 @@ import java.net.*;
 import java.util.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.KeyStore;
+import java.security.cert.X509Certificate;
+import java.security.cert.Certificate;
+import java.security.PrivateKey;
+import java.security.Security;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.SSLServerSocket;
+import org.bouncycastle.util.io.pem.PemObject;
+import org.bouncycastle.util.io.pem.PemReader;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 
 //Written by Ammar Abu Shamleh, with reference to resources (all listed and named in relevant sections of code)
 
@@ -26,10 +45,19 @@ public class Server {
         
         //TODO: Read csv file containing 'files' data
         
-		//Establish new socket that monitors specified port
-        ServerSocket s = null;
+		/*//Establish new socket that monitors specified port
+        //ServerSocket s = null;*/
+        
+        //Initialize string pemPath
+        String pemPath = System.getProperty("user.dir") + "/PEM/";
+        
+        //Establish new SSL socket
+        SSLServerSocket s = null;
         try {
-            s =  new ServerSocket(PORT);
+            //Initialize SSL context using PEM files
+            SSLServerSocketFactory sslserversocketfactory = getServerSocketFactoryPEM(pemPath);
+            //s =  new ServerSocket(PORT);
+            s = (SSLServerSocket) sslserversocketfactory.createServerSocket(PORT);
         } catch(Exception e) {
             e.printStackTrace();
         }
@@ -70,6 +98,90 @@ public class Server {
         
         //TODO: Write 'files' data to csv file
 	}
+	
+	//Creates SSLSocketFactory and initialises context using 2 PEM files (public-private key pair)
+	//Reference: http://stackoverflow.com/questions/12501117/programmatically-obtain-keystore-from-pem
+	//Reference: http://www.bouncycastle.org/wiki/display/JA1/Provider+Installation
+	private static SSLServerSocketFactory getServerSocketFactoryPEM(String pemPath) throws Exception {
+		//Ad bouncy castle provider for Java Security API
+		Security.addProvider(new BouncyCastleProvider());
+			
+		//Set context to SSL
+		SSLContext context = SSLContext.getInstance("SSL");
+		
+		//Read certificate into byte array
+		byte[] certBytes = fileToBytes(pemPath + "public.crt");
+		//Read private key into byte array
+		byte[] keyBytes = fileToBytes(pemPath + "private.key");
+		
+		PemReader reader;
+		PEMParser parser;
+		PemObject temp;
+				
+		//Use reader to create X509CertificateHolder object from corresponding byte array
+		reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(certBytes)));
+		parser = new PEMParser(reader);
+		X509CertificateHolder certHolder = (X509CertificateHolder)parser.readObject();
+        
+        //Now convert X509CertificateHolder to X509Certificate http://stackoverflow.com/questions/6370368/bouncycastle-x509certificateholder-to-x509certificate
+        JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
+        X509Certificate cert = certConverter.setProvider("BC").getCertificate(certHolder);
+		
+		//Use reader to create PrivateKeyInfo object from corresponding byte array
+		reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(keyBytes)));
+		parser = new PEMParser(reader);
+		PrivateKeyInfo keyInfo = (PrivateKeyInfo)parser.readObject();
+        
+        //Now convert PrivateKeyInfo to java.security.PrivateKey
+        JcaPEMKeyConverter keyConverter = new JcaPEMKeyConverter();
+        PrivateKey key = keyConverter.setProvider("BC").getPrivateKey(keyInfo);
+		
+		//Create dynamic keystore to use for SSL context
+		KeyStore keystore = KeyStore.getInstance("JKS");
+		keystore.load(null);
+		keystore.setCertificateEntry("server-cert", cert);
+		Certificate[] certChain = {cert}; //Certificate chain for private key (verifying corresponding public key)
+		keystore.setKeyEntry("server-key", key, "password".toCharArray(), certChain); 
+		
+		//Create and initialise key manager factory using "SunX509" algorithm
+		KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+		kmf.init(keystore, "password".toCharArray());
+		
+		KeyManager[] km = kmf.getKeyManagers();
+		context.init(km, null, null);
+		
+		return context.getServerSocketFactory();
+	}
+	
+	//Read file (pointed to by filename) into array of bytes, and return it
+	private static byte[] fileToBytes(String filename) {
+		File f = new File(filename);
+		int nbytes = (int) f.length();
+		byte[] result = new byte[nbytes];
+		
+		//Make sure file exists
+		if(!f.exists() || f.isDirectory()) {
+			//File doesn't exist; print error message and exit
+			throw new FileDoesntExist(filename);
+		}
+		
+		//Read file's contents into byte array
+		try {
+            FileInputStream fis = new FileInputStream(f);
+            for(int i=0; i<nbytes; i++) {
+                byte b = (byte) fis.read();
+                if(b != -1) result[i] = b;
+                else {
+                    //An error has probably occurred
+                }
+            }
+		} catch(Exception e) {
+            e.printStackTrace();
+        }
+		
+		//Now return byte array
+		return result;
+	}
     
     //Takes socket as parameter and saves file to disk
     public static void saveFile(Socket s, boolean isCert) throws Exception {
@@ -80,12 +192,6 @@ public class Server {
         //Read file name off socket
         BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
         String filename = in.readLine().trim();
-        
-        /* NOT SURE WHAT THIS DOES, HONESTLY, BUT IT SEEMS LIKE IT MIGHT BE USEFUL FOR SOMETHING, SO I'LL LEAVE IT FOR NOW
-        Path currentRelativePath = Paths.get("");
-        String curDir = currentRelativePath.toAbsolutePath().toString();
-        System.out.println("Current relative path is: " + s);
-        */
         
         //Create file in correct directory
         String curPath = System.getProperty("user.dir");
@@ -155,7 +261,7 @@ public class Server {
         }
         dos.writeInt(FILE_TRUSTWORTHY);
         
-        //Otherwise, send file byte by byte
+        //If it does, send file byte by byte
         fis = new FileInputStream(f);
         try {
             while(true) {
