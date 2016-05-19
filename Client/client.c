@@ -39,7 +39,7 @@ void usage(void){
 */
 int main(int argc, char **argv) {
     // Program name without /, cast to constant for file
-    programName = (const char*) strrchr(argv[0], '/');
+    programName = (const char*) strrchr(argv[0], '/') + 1;
     
 	//Check number of arguments
     if(argc < 2 || argv[1][0] != '-') {

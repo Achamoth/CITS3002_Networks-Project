@@ -68,13 +68,17 @@ int openTCPConnection(const char *host, const char *port){
     return socketDescriptor;
 }
 
-
 /*
-    secureConnection
-    Intialise SSL context and negotiate secure transmission with
-    server
+    makeSSLContext
+    Initialises SSL functions and libraries
+    Loads context with private key and public certificate.
+    Verifies certificate and key.
+
+    @return SSL_CTX*    Error checked ssl context read to be bonded to socket
+                        descriptor for ssl session.
+
 */
-void secureConnection(const char* host, const char* port){
+SSL_CTX *makeSSLContext(){
     //  Initialise SSL library--------------------------------------------------
     SSL_load_error_strings();
     //  OpenSSL 1.02 and below load crypt:
@@ -83,7 +87,8 @@ void secureConnection(const char* host, const char* port){
     //  Create SSL context - client in this case using SSLv3
     SSL_CTX *sslContext = SSL_CTX_new(SSLv3_client_method());
     if(sslContext == NULL){
-        fprintf(stderr, "\n%s: SSL: Failed to create new context.\n", programName);
+        fprintf(stderr, "\n%s: SSL: Failed to create new context.\n", 
+            programName);
         exit(EXIT_FAILURE);
     }
     else{
@@ -124,15 +129,28 @@ void secureConnection(const char* host, const char* port){
         fprintf(stdout, "%s: Public - Private key relationship verified.\n", 
             programName);
     }
+    return sslContext;
+}
+
+/*
+    secureConnection
+    Intialise SSL context and negotiate secure transmission with
+    server
+*/
+void secureConnection(const char* host, const char* port){
+
+    SSL_CTX *sslContext = makeSSLContext();    
     
     fprintf(stdout, "%s: Contacting server...\n", programName);
     //  Find and open TCP socket to server
     int serverSocket = openTCPConnection(host, port);
 
-    // Create SSL structure
+
+    // Create SSL session / handle
     SSL *ssl = SSL_new(sslContext);
     if(ssl == NULL){
-        fprintf(stderr, "%s: SSL: Failed to create new session.\n", programName);
+        fprintf(stderr, "%s: SSL: Failed to create new session.\n", 
+            programName);
         exit(EXIT_FAILURE);
     }
     else{
@@ -168,7 +186,8 @@ void secureConnection(const char* host, const char* port){
     //  Print Issuer to stdout
     X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(serverCertificate), 2, 
         XN_FLAG_MULTILINE);
-    fprintf(stdout, "\n%s: Server certificate subject (if any):\n", programName);
+    fprintf(stdout, "\n%s: Server certificate subject (if any):\n", 
+        programName);
     X509_NAME_print_ex_fp(stdout, X509_get_subject_name(serverCertificate), 2, 
         XN_FLAG_MULTILINE);
 
