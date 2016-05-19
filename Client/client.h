@@ -19,6 +19,7 @@
 //  OpenSSL includes
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/x509.h>
 
 
 //------------------------------------------------------------------
@@ -71,6 +72,7 @@ extern int openTCPConnection(const char *, const char *);
 extern void usage();
 extern void parseRequest(char *, char *, actionType, char *, char*, 
 							int, char*);
+extern void secureConnection(const char*, const char *);
 extern void newRequiredMember(char *);
 extern void freeCircleMembers();
 extern bool uploadFile(char *, bool);

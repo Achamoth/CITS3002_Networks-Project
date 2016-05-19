@@ -4,20 +4,20 @@
 # Date:                 6/05/2016
 
 #   Make file for Oldtrusty Client program
-PROJECT = oldTrusty
+EXEC = oldTrustyClient
 HEADERS = $(wildcard *.h)
 SOURCES = $(wildcard *.c)
 OBJECTS = $(wildcard *.o)
 
 CC = cc
 CFLAGS = -std=c99 -Wall -pedantic -Werror
-LIBS = -lssl -lcrypto
+LDLIBS = -lssl -lcrypto
 
-$(PROJECT) : $(OBJECTS)
-    $(CC) $(CFLAGS) $(LIBS) $(SOURCES) -o $(PROJECT) $(OBJECTS) $(LIBS)
+$(EXEC): $(OBJECTS)
+	$(CC) $(CFLAGS) $(SOURCES) -o $(EXEC) $(LDLIBS)
 
 $(OBJECTS): $(SOURCES) $(HEADERS)
-    $(CC) $(CFLAGS) $(LIBS) -c $(SOURCES)
+	$(CC) $(CFLAGS) -c $(SOURCES) $(LDLIBS)
 
 clean:
-    rm -f $(PROJECT) $(OBJECTS)
+	rm -f $(OBJECTS) $(EXEC)

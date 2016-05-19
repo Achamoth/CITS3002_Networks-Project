@@ -5,6 +5,8 @@
     Date:           d/m/2015
 */
 #include "client.h"
+#define PUBLIC_KEY "certificates/public.crt"
+#define PRIVATE_KEY "certificates/private.key"
 
 /*
     openTCPConnection
@@ -34,6 +36,9 @@ int openTCPConnection(const char *host, const char *port){
             gai_strerror(addrInfo_Error));
         usage();
     }
+    else{
+        fprintf(stdout, "%s: Server Found.\n", programName);
+    }
 
     // Create a socket descriptor
     socketDescriptor = socket(hostFound->ai_family,
@@ -43,12 +48,18 @@ int openTCPConnection(const char *host, const char *port){
         perror("Socket Error");
         exit(EXIT_FAILURE);
     }
+    else{
+        fprintf(stdout, "%s: Establishing TCP connection...\n", programName);
+    }
 
     // Connect to socket
     if(connect(socketDescriptor, hostFound->ai_addr, hostFound->ai_addrlen) < 0){
         close(socketDescriptor);
         perror("Connect Error");
         exit(EXIT_FAILURE);
+    }
+    else{
+        fprintf(stdout, "%s: TCP connection established.\n\n", programName);
     }
     // Free the addrinfo struct
     freeaddrinfo(hostFound);
@@ -64,108 +75,124 @@ int openTCPConnection(const char *host, const char *port){
     server
 */
 void secureConnection(const char* host, const char* port){
-    //  Initialise SSL library
+    //  Initialise SSL library--------------------------------------------------
     SSL_load_error_strings();
-    SSL_library_init(); //  Loacs encryption and hashing for SSL program
-    OpenSSL_add_all_algorithms(); // cryptogrophy
+    //  OpenSSL 1.02 and below load crypt:
+    SSL_library_init(); //  Loads encryption and hashing for SSL program
+    OpenSSL_add_all_algorithms(); // cryptogrophy, intialise ciphers and digests
     //  Create SSL context - client in this case using SSLv3
     SSL_CTX *sslContext = SSL_CTX_new(SSLv3_client_method());
     if(sslContext == NULL){
-        fprintf(stderr, "%s: SSL: Failed to create new context.\n", programName);
+        fprintf(stderr, "\n%s: SSL: Failed to create new context.\n", programName);
         exit(EXIT_FAILURE);
+    }
+    else{
+        fprintf(stdout, "\n%s: SSL context created.\n", programName);
     }
 
-    //  Public Key
-    //  Load the client certificate (need to have position in project folder for
-    //  certs)
-    if(SSL_CTX_use_certificate_file(sslContext, RSA_CLIENT_CERT, 
-                                                    SSL_FILETYPE_PEM) < 1){
-        ERR_print_errors_fp(stderr);
-        exit(EXIT_FAILURE);
-    }
-
-    // Be a verified Client if asked-------------------------------------------
-    // Load client certificate into context
-    if(SSL_CTX_use_certificate_file(sslContext, RSA_CLIENT_CERT), 
-        SSL_FILETYPE_PEM) < 1){
-        ERR_print_errors_fp(stderr);
-        exit(EXIT_FAILURE);
-    }
     //  Private Key
-    //  Load private key corresponding to client certificate
-    if(SSL_CTX_use_PrivateKey_file(sslContext, RSA_CLIENT_KEY, 
-                                                    SSL_FILETYPE_PEM) < 1){
+    //  Load private key corresponding to client certificate to allow for 
+    //  SSL handshake to decrypt any communication encoded by the public key
+    if(SSL_CTX_use_PrivateKey_file(sslContext, PRIVATE_KEY, 
+                                                        SSL_FILETYPE_PEM) != 1){
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
+    else{
+        fprintf(stdout, "%s: Client Private Key found.\n", programName);
+    }
 
-    //  Check if certificate and key pair provided match
+    //  Load Public Certificate including public key into ssl session-----------
+    //  Load the client certificate in PEM format
+    if(SSL_CTX_use_certificate_file(sslContext, PUBLIC_KEY, 
+                                                    SSL_FILETYPE_PEM) != 1){
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+    else{
+        fprintf(stdout, "%s: Client Public Key found.\n", programName);
+    }
+
+    //  Check public - private key pair integrity
     if(!SSL_CTX_check_private_key(sslContext)){
         fprintf(stderr, "%s: SSL: Client Private key does not match client" 
             "certificate public key.\n", programName);
+        ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
-
-    //  Do not have CA in this case so don't have CA file
-    //  Set flag in context to request server's certificate verification
-    //  Forces server to have certificate, if SSL or TLS will have one anyway
-    SSL_CTX_set_verify(sslContext, SSL_VERIFY_PEER, NULL);
-    // Below is a chain of trust function but is similar to the ring of trust.
-    // SSL_CTX_set_verify_depth(sslContext,1);
-    // -------------------------------------------------------------------------
+    else{
+        fprintf(stdout, "%s: Public - Private key relationship verified.\n", 
+            programName);
+    }
     
-    //  Connect to server via TCP
+    fprintf(stdout, "%s: Contacting server...\n", programName);
+    //  Find and open TCP socket to server
     int serverSocket = openTCPConnection(host, port);
 
     // Create SSL structure
     SSL *ssl = SSL_new(sslContext);
     if(ssl == NULL){
-        fprintf(stderr, "%s: SSL: Failed to create new context.\n", programName);
-        exit(EXIT_FAILURE);
-    }
-
-    // Connect SSL structure with the server TCP socket descriptor
-    SSL_set_fd(ssl, serverSocket);
-    // Initiate SSL handshake
-    if(SSL_connect(ssl, serverSocket) < 0){
-        ERR_print_errors_fp(stderr);
-        exit(EXIT_FAILURE);
-    }
-
-    fprintf(stdout, "SSL connection encrypted using %s\n", SSL_get_cipher(ssl));
-
-    X509* serverCertificate = SSL_get_peer_certificate(ssl);
-    if(serverCertificate == NULL){
-        fprintf(stderr, "%s: No SSL certificate provided by server, disconnecting.", 
-            programName);
+        fprintf(stderr, "%s: SSL: Failed to create new session.\n", programName);
         exit(EXIT_FAILURE);
     }
     else{
-        fprintf(stdout, "SSL certificate received.\n");
+        fprintf(stdout, "%s: SSL session created.\n", programName);
     }
-    fprintf(stdout, "Server certificate:\nIssuer:\n");
 
+    // Set socket descript to SSL context
+    SSL_set_fd(ssl, serverSocket);
+
+    // Initiate SSL handshake
+    if(SSL_connect(ssl) != 1){
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+    else{
+        fprintf(stdout, "%s: SSL handshake successful.\n", programName);
+    }
+
+    fprintf(stdout, "%s: SSL session encrypted using:\n\t%s\n", programName,
+        SSL_get_cipher(ssl));
+
+    X509* serverCertificate = SSL_get_peer_certificate(ssl);
+    if(serverCertificate == NULL){
+        fprintf(stderr, "%s: No public certificate provided by server, "
+            "disconnecting.", programName);
+        exit(EXIT_FAILURE);
+    }
+    else{
+        fprintf(stdout, "%s: Server certificate received.\n", programName);
+    }
+
+    fprintf(stdout, "Server certificate details:\n");
     //  Print Issuer to stdout
-    X509_Name_print_ex_fp(stdout, X509_get_issuer_name(serverCertificate), 2, 
+    X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(serverCertificate), 2, 
         XN_FLAG_MULTILINE);
-    fprintf(stdout,"Subject:\n");
-    X509_Name_print_ex_fp(stdout, X509_get_subject_name(serverCertificate), 2, 
+    fprintf(stdout, "\n%s: Server certificate subject (if any):\n", programName);
+    X509_NAME_print_ex_fp(stdout, X509_get_subject_name(serverCertificate), 2, 
         XN_FLAG_MULTILINE);
 
     //TODO ADD DATA TO BE EXCHANGED
 
-    SSL_write(ssl, "hello world!", strlen("hello World!") + 1);
-    SSL_read(ssl, buf, sizeof(buf) -1);
-    buf[err] = '\0';
-    printf("got %d chars: '%s'\n", err, buf);
+    char buf[1024];
+    int bytes;
+    char *message = "hello world!";
 
+    SSL_write(ssl, message, strlen(message));
+    bytes = SSL_read(ssl, buf, sizeof(buf));
+    buf[bytes] = '\0';
+    printf("got %d chars: '%s'\n", bytes, buf);
+    free(message);
 
-    fprintf(stdout, "Closing SSL connection.\n");
     //  Free server's certificate
     X509_free(serverCertificate);
     // Notify SSL session to shutdown
+    fprintf(stdout, "%s: Closing SSL session.\n", programName);
     SSL_shutdown(ssl);
-    close(serverSocket);        // close TCP socket
+    fprintf(stdout, "Closing TCP connection.\n");
+    // Notify that socket wants to close
+    shutdown(serverSocket, SHUT_RDWR);   // Graceful TCP shutdown
+    close(serverSocket);        // close (destroy) TCP socket
     SSL_free(ssl);              // free ssl structure
     SSL_CTX_free(sslContext);   // free ssl context
 }

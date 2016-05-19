@@ -20,5 +20,5 @@
 */
 void parseRequest(char *host, char *port, actionType action, char *file, char *certificate, 
                     int minCircle, char *member){
-
+    secureConnection(host, port);
 }
