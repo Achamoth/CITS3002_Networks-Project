@@ -26,13 +26,16 @@ void parseRequest(char *host, char *port, int action, char *file, char *certific
     //Perform user request
     switch(action) {
         case PUSH:
+            //Upload file to server (not a certificate)
             sendFile(ssl, file, false);
             break;
         case PULL:
-            //TODO: Perform file download
+            //Download file from server
+            downloadFile(ssl, file);
             break;
         case PUSH_CERT:
-            sendFile(ssl, file true);
+            //Upload certificate to server
+            sendFile(ssl, file, true);
             break;
     }
     
@@ -95,6 +98,58 @@ void sendFile(SSL *ssl, char *filename, bool isCert) {
     
     //Free allocated memory and close resources
     fclose(fpin);
+    free(buffer);
+}
+
+//Request that server send file (indicated by filename), using open socket descriptor 'sd'
+void downloadFile(SSL *ssl, char *filename) {
+    int success;
+    
+    //First send the action number, so the server knows what to expect
+    int action = PULL;
+    SSL_write(ssl, &action, sizeof(int));
+    
+    //Now, send file name
+    char *filename_to_server = strdup(filename);
+    filename_to_server[strlen(filename_to_server)] = '\n';
+    success = SSL_write(ssl, filename_to_server, sizeof(char)*strlen(filename_to_server));
+    if(success<0) {
+        printf("Error sending action number\n");
+        closeConnection();
+        exit(EXIT_FAILURE);
+    }
+    
+    //Wait for server to send response (indentifying whether or not it has the file)
+    int response;
+    response = readResponse(ssl);
+    if(response != FILE_FOUND) {
+        if(response == FILE_NOT_FOUND) printf("Error. Requested file doesn't exist on server\n");
+        else printf("Unkown error occured. %d\n", response);
+        closeConnection();
+        exit(EXIT_FAILURE);
+    }
+    
+    //Wait for server to report whether or not file meets trust requirements (DOESN'T WORK PROPERLY)
+    response = readResponse(ssl);
+    if(response != FILE_TRUSTWORTHY) {
+        if(response == FILE_UNTRUSTWORTHY) printf("The file does not meet the specified trust requirements\n");
+        else printf("Unknown error occured. %d\n", response);
+        closeConnection();
+        exit(EXIT_FAILURE);
+    }
+    
+    //Wait for server to send file, and read it one byte at a time, writing each byte to file as it comes in
+    FILE *fpout = fopen(filename, "wb");
+    char *buffer = (char *) malloc(sizeof(char));
+    int n;
+    n = SSL_read(ssl, buffer, sizeof(char));
+    while(n > 0) {
+        fwrite(buffer, 1, sizeof(char), fpout);
+        n = SSL_read(ssl, buffer, sizeof(char));
+    }
+    
+    //Free all memory and close resources
+    fclose(fpout);
     free(buffer);
 }
 
