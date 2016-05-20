@@ -54,7 +54,8 @@ int main(int argc, char **argv) {
 	char* certificateName = NULL;
 	char* memberName = NULL;
 	int minCircleSize = 0;
-	actionType action = NONE;
+	int action = 0;
+    bool requiredMember = false;
 
     
     //	Parse command line args
@@ -90,12 +91,12 @@ int main(int argc, char **argv) {
                 break;
             case 'n':
                 //  Require circle of trust to involve named person
-            	action = CHECK;
+                requiredMember = true;
             	memberName = strdup(optarg);
                 break;
             case 'u':
                 //  Upload new certificate to server
-            	action = PUSH;
+            	action = PUSH_CERT;
                 certificateName = strdup(optarg);
                 break;	
             case 'v':
@@ -127,7 +128,7 @@ int main(int argc, char **argv) {
 
     //  Run user request
     parseRequest(host, port, action, fileName, certificateName, minCircleSize, 
-        memberName);
+        memberName, requiredMember);
     
     return EXIT_SUCCESS;
 }

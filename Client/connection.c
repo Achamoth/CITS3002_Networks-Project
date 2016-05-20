@@ -201,6 +201,10 @@ SSL *secureConnection(const char* host, const char* port){
     return ssl;
 }
 
+/*
+    closeConnection
+    Close SSL connection to server
+*/
 void closeConnection() {
     //  Free server's certificate
     X509_free(serverCertificate);

@@ -24,6 +24,11 @@
 //------------------------------------------------------------------
 // Preprocessor defined constants for control communication with server
 //-----------------------------------------------------------------
+#define PUSH 1
+#define PULL 2
+#define PUSH_CERT 3
+#define LIST 4
+#define VOUCH 5
 #define FILE_TRUSTWORTHY 8
 #define FILE_UNTRUSTWORTHY 9
 #define ACKNOWLEDGMENT 10
@@ -33,7 +38,7 @@
 //------------------------------------------------------------------
 // Enum action struct to determine purpose of client message
 //------------------------------------------------------------------
-typedef enum {
+/*typedef enum {
 	NONE = 0,
 	PUSH = 1,
 	PULL = 2,
@@ -43,7 +48,7 @@ typedef enum {
 	VOUCH = 6,
 	PASS = 7,
 	FAIL = 8,
-} actionType;
+} actionType;*/
 
 //------------------------------------------------------------------
 // POSIX defined container struct from netdb.h
@@ -80,8 +85,12 @@ typedef enum {
 extern int openTCPConnection(const char *, const char *);
 extern void closeConnection();
 extern void usage();
-extern void parseRequest(char *, char *, actionType, char *, char*, 
-							int, char*);
+
+extern void parseRequest(char *, char *, int, char *, char*,
+							int, char*, bool);
+extern void sendFile(SSL *, char* , bool);
+extern int readResponse(SSL *);
+
 extern SSL *secureConnection(const char*, const char *);
 extern void newRequiredMember(char *);
 extern void freeCircleMembers();
