@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
 	char* certificateName = NULL;
 	char* memberName = NULL;
 	int minCircleSize = 0;
-	int action = 0;
+	actionType action = NONE;
     bool requiredMember = false;
 
     

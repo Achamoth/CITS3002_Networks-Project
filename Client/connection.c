@@ -8,6 +8,10 @@
 #define PUBLIC_KEY "certificates/public.crt"
 #define PRIVATE_KEY "certificates/private.key"
 
+static SSL* ssl;
+static SSL_CTX* sslContext;
+static int serverSocket;
+
 /*
     openTCPConnection
     Open a socket and connect using TCP protocol
@@ -85,7 +89,7 @@ SSL_CTX *makeSSLContext(){
     SSL_library_init(); //  Loads encryption and hashing for SSL program
     OpenSSL_add_all_algorithms(); // cryptogrophy, intialise ciphers and digests
     //  Create SSL context - client in this case using SSLv3
-    SSL_CTX *sslContext = SSL_CTX_new(SSLv3_client_method());
+    sslContext = SSL_CTX_new(SSLv3_client_method());
     if(sslContext == NULL){
         fprintf(stderr, "\n%s: SSL: Failed to create new context.\n", 
             programName);
@@ -142,15 +146,15 @@ SSL_CTX *makeSSLContext(){
     @return open SSL Session
 */
 SSL *secureConnection(const char* host, const char* port){
-    SSL_CTX *sslContext = makeSSLContext();
+    sslContext = makeSSLContext();
     
     fprintf(stdout, "%s: Contacting server...\n", programName);
     //  Find and open TCP socket to server
-    int serverSocket = openTCPConnection(host, port);
+    serverSocket = openTCPConnection(host, port);
 
 
     // Create SSL session / handle
-    SSL *ssl = SSL_new(sslContext);
+    ssl = SSL_new(sslContext);
     if(ssl == NULL){
         fprintf(stderr, "%s: SSL: Failed to create new session.\n", 
             programName);
@@ -193,6 +197,7 @@ SSL *secureConnection(const char* host, const char* port){
         programName);
     X509_NAME_print_ex_fp(stdout, X509_get_subject_name(serverCertificate), 2, 
         XN_FLAG_MULTILINE);
+    printf("\n");
 
     //  Free server's certificate
     X509_free(serverCertificate);
@@ -206,7 +211,7 @@ SSL *secureConnection(const char* host, const char* port){
 
     @param
 */
-void closeConnection(SSL* ssl, SSL_CTX* sslContext, int serverSocket) {
+void closeConnection() {
     // Notify SSL session to shutdown
     fprintf(stdout, "%s: Closing SSL session.\n", programName);
     SSL_shutdown(ssl);

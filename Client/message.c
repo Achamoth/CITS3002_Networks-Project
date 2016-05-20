@@ -59,9 +59,11 @@ int readResponse(SSL *ssl) {
     @param action       Type of message / action
 */
 //Send file (indicated by filename) to server, using open socket descriptor 'sd'
-void sendFile(SSL *ssl, char *fileName, char *isCert){
-    //  Send filename
-    char *serverFormattedName = strrchr(fileName, '/');
+void sendFile(SSL *ssl, char *fileName){
+    //  Format and send filename
+    char *serverFormattedName = strrchr(strdup(fileName), '/');
+    if(serverFormattedName == NULL) serverFormattedName = strdup(fileName);
+    else serverFormattedName++;
     //'\n' necessary for readLine() to work in server
     serverFormattedName[strlen(serverFormattedName)] = '\n';
     if(SSL_write(ssl, serverFormattedName, 
@@ -107,17 +109,12 @@ void sendFile(SSL *ssl, char *fileName, char *isCert){
     //  Free allocated memory and close resources
     fclose(fp);
     free(buffer);
-    free(serverFormattedName);
 }
 
 //Request that server send file (indicated by filename), using open socket descriptor 'sd'
 void getFile(SSL *ssl, char *filename) {
     int success;
-    
-    //First send the action number, so the server knows what to expect
-    int action = PULL;
-    SSL_write(ssl, &action, sizeof(int));
-    
+
     //Now, send file name
     char *filename_to_server = strdup(filename);
     filename_to_server[strlen(filename_to_server)] = '\n';
@@ -189,27 +186,28 @@ void parseRequest(char *host, char *port, actionType action, char *file,
     //Perform user request
     switch(action) {
         case PUSH:{
-            char * isCert = NULL;
             //  Check for file presence
             if(file == NULL && certificate == NULL){
                 fprintf(stderr, "%s: File to upload not found.\n", programName);
                 usage();
             }
             sendAction(ssl, PUSH);
-            if(certificate == NULL){    //  Is a file
-                isCert = "F";
-                sendFile(ssl, file, isCert);
-            }
-            else{   //  Is a certificate
-                isCert = "C";
-                sendFile(ssl, certificate, isCert);
-            }
-            free(isCert);
+            sendFile(ssl, file);
             break;
         }
         case PULL:
             //Download file from server
+            sendAction(ssl, PULL);
             getFile(ssl, file);
+            break;
+        case PUSH_CERT:
+            //Upload certificate to server
+            if(certificate == NULL) {
+                fprintf(stderr, "%s: Certificate to upload not found.\n", programName);
+                usage();
+            }
+            sendAction(ssl, PUSH_CERT);
+            sendFile(ssl, certificate);
             break;
         default:
             // Error action should be set
