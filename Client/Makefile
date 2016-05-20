@@ -10,7 +10,7 @@ SOURCES = $(wildcard *.c)
 OBJECTS = $(wildcard *.o)
 
 CC = cc
-CFLAGS = -std=c99 -Wall -pedantic -Werror
+CFLAGS = -std=c99 -Wall -pedantic -Werror -Wno-deprecated
 LDLIBS = -lssl -lcrypto
 
 $(EXEC): $(OBJECTS)
