@@ -28,6 +28,12 @@ void parseRequest(char *host, char *port, int action, char *file, char *certific
         case PUSH:
             sendFile(ssl, file, false);
             break;
+        case PULL:
+            //TODO: Perform file download
+            break;
+        case PUSH_CERT:
+            sendFile(ssl, file true);
+            break;
     }
     
     //Close connection to server
