@@ -21,6 +21,14 @@
 #include <openssl/err.h>
 #include <openssl/x509.h>
 
+//------------------------------------------------------------------
+// Preprocessor defined constants for control communication with server
+//-----------------------------------------------------------------
+#define FILE_TRUSTWORTHY 8
+#define FILE_UNTRUSTWORTHY 9
+#define ACKNOWLEDGMENT 10
+#define FILE_NOT_FOUND 15
+#define FILE_FOUND 16
 
 //------------------------------------------------------------------
 // Enum action struct to determine purpose of client message
@@ -29,11 +37,12 @@ typedef enum {
 	NONE = 0,
 	PUSH = 1,
 	PULL = 2,
-	LIST = 3,
-	CHECK = 4,
-	VOUCH = 5,
-	PASS = 6,
-	FAIL = 7,
+    PUSH_CERT = 3,
+	LIST = 4,
+	CHECK = 5,
+	VOUCH = 6,
+	PASS = 7,
+	FAIL = 8,
 } actionType;
 
 //------------------------------------------------------------------
@@ -69,10 +78,11 @@ typedef enum {
 // Package accessible functions
 //------------------------------------------------------------------
 extern int openTCPConnection(const char *, const char *);
+extern void closeConnection();
 extern void usage();
 extern void parseRequest(char *, char *, actionType, char *, char*, 
 							int, char*);
-extern void secureConnection(const char*, const char *);
+extern SSL *secureConnection(const char*, const char *);
 extern void newRequiredMember(char *);
 extern void freeCircleMembers();
 extern bool uploadFile(char *, bool);

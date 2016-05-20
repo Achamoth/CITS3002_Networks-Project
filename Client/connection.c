@@ -8,6 +8,12 @@
 #define PUBLIC_KEY "certificates/public.crt"
 #define PRIVATE_KEY "certificates/private.key"
 
+//Global variables
+X509 *serverCertificate;
+SSL *ssl;
+SSL_CTX *sslContext;
+int serverSocket;
+
 /*
     openTCPConnection
     Open a socket and connect using TCP protocol
@@ -135,19 +141,19 @@ SSL_CTX *makeSSLContext(){
 /*
     secureConnection
     Intialise SSL context and negotiate secure transmission with
-    server
+    server. Return open SSL connection
 */
-void secureConnection(const char* host, const char* port){
+SSL *secureConnection(const char* host, const char* port){
 
-    SSL_CTX *sslContext = makeSSLContext();    
+    sslContext = makeSSLContext();
     
     fprintf(stdout, "%s: Contacting server...\n", programName);
     //  Find and open TCP socket to server
-    int serverSocket = openTCPConnection(host, port);
+    serverSocket = openTCPConnection(host, port);
 
 
     // Create SSL session / handle
-    SSL *ssl = SSL_new(sslContext);
+    ssl = SSL_new(sslContext);
     if(ssl == NULL){
         fprintf(stderr, "%s: SSL: Failed to create new session.\n", 
             programName);
@@ -172,7 +178,7 @@ void secureConnection(const char* host, const char* port){
     fprintf(stdout, "%s: SSL session encrypted using:\n\t%s\n", programName,
         SSL_get_cipher(ssl));
 
-    X509* serverCertificate = SSL_get_peer_certificate(ssl);
+    serverCertificate = SSL_get_peer_certificate(ssl);
     if(serverCertificate == NULL){
         fprintf(stderr, "%s: No public certificate provided by server, "
             "disconnecting.", programName);
@@ -191,17 +197,11 @@ void secureConnection(const char* host, const char* port){
     X509_NAME_print_ex_fp(stdout, X509_get_subject_name(serverCertificate), 2, 
         XN_FLAG_MULTILINE);
 
-    //TODO ADD DATA TO BE EXCHANGED
+    //Return open SSL connection
+    return ssl;
+}
 
-    char buf[1024];
-    int bytes;
-    char *message = "hello world!";
-
-    SSL_write(ssl, message, strlen(message));
-    bytes = SSL_read(ssl, buf, sizeof(buf));
-    buf[bytes] = '\0';
-    printf("got %d chars: '%s'\n", bytes, buf);
-
+void closeConnection() {
     //  Free server's certificate
     X509_free(serverCertificate);
     // Notify SSL session to shutdown

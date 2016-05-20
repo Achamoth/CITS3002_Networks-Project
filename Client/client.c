@@ -48,8 +48,8 @@ int main(int argc, char **argv) {
         usage();
     }
     
-    char* host = NULL;	// possibly set as a default
-	char* port = NULL;	// possibly set as a default
+    char* host = NULL;
+	char* port = NULL;
 	char* fileName = NULL;
 	char* certificateName = NULL;
 	char* memberName = NULL;
