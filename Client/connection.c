@@ -16,8 +16,8 @@
     @return         Open socket
 */
 int openTCPConnection(const char *host, const char *port){
-    addrinfo hostReq;
-    addrinfo *hostFound;
+    struct addrinfo hostReq;
+    struct addrinfo *hostFound;
     int addrInfo_Error;
     int socketDescriptor;
 
@@ -201,7 +201,6 @@ void secureConnection(const char* host, const char* port){
     bytes = SSL_read(ssl, buf, sizeof(buf));
     buf[bytes] = '\0';
     printf("got %d chars: '%s'\n", bytes, buf);
-    free(message);
 
     //  Free server's certificate
     X509_free(serverCertificate);

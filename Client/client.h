@@ -41,7 +41,7 @@ typedef enum {
 // As described in 
 // http://beej.us/guide/bgnet/output/html/multipage/ipstructsdata.html
 //------------------------------------------------------------------
-typedef struct addrinfo {
+/*typedef struct addrinfo {
     int              ai_flags;     // AI_PASSIVE, AI_CANONNAME, etc.
     int              ai_family;    // AF_INET, AF_INET6, AF_UNSPEC
     int              ai_socktype;  // SOCK_STREAM, SOCK_DGRAM
@@ -51,7 +51,7 @@ typedef struct addrinfo {
     char            *ai_canonname; // full canonical hostname
 
     struct addrinfo *ai_next;      // linked list, next node
-} addrinfo;
+} ;*/
 
 //------------------------------------------------------------------
 // POSIX defined functions
