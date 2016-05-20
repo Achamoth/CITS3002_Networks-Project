@@ -1,18 +1,12 @@
 /*
     CITS3002 Project 2016
-    Name:           Ammar Abu Shamleh, Pradyumn Vij, Goce Krlevski 
+    Name:           Ammar Abu Shamleh, Pradyumn Vij 
     Student number: 21469477
     Date:           d/m/2015
 */
 #include "client.h"
 #define PUBLIC_KEY "certificates/public.crt"
 #define PRIVATE_KEY "certificates/private.key"
-
-//Global variables
-X509 *serverCertificate;
-SSL *ssl;
-SSL_CTX *sslContext;
-int serverSocket;
 
 /*
     openTCPConnection
@@ -141,19 +135,22 @@ SSL_CTX *makeSSLContext(){
 /*
     secureConnection
     Intialise SSL context and negotiate secure transmission with
-    server. Return open SSL connection
+    server.
+
+    @param  host    Server address
+    @param  port    Server port
+    @return open SSL Session
 */
 SSL *secureConnection(const char* host, const char* port){
-
-    sslContext = makeSSLContext();
+    SSL_CTX *sslContext = makeSSLContext();
     
     fprintf(stdout, "%s: Contacting server...\n", programName);
     //  Find and open TCP socket to server
-    serverSocket = openTCPConnection(host, port);
+    int serverSocket = openTCPConnection(host, port);
 
 
     // Create SSL session / handle
-    ssl = SSL_new(sslContext);
+    SSL *ssl = SSL_new(sslContext);
     if(ssl == NULL){
         fprintf(stderr, "%s: SSL: Failed to create new session.\n", 
             programName);
@@ -178,7 +175,7 @@ SSL *secureConnection(const char* host, const char* port){
     fprintf(stdout, "%s: SSL session encrypted using:\n\t%s\n", programName,
         SSL_get_cipher(ssl));
 
-    serverCertificate = SSL_get_peer_certificate(ssl);
+    X509 *serverCertificate = SSL_get_peer_certificate(ssl);
     if(serverCertificate == NULL){
         fprintf(stderr, "%s: No public certificate provided by server, "
             "disconnecting.", programName);
@@ -197,6 +194,8 @@ SSL *secureConnection(const char* host, const char* port){
     X509_NAME_print_ex_fp(stdout, X509_get_subject_name(serverCertificate), 2, 
         XN_FLAG_MULTILINE);
 
+    //  Free server's certificate
+    X509_free(serverCertificate);
     //Return open SSL connection
     return ssl;
 }
@@ -204,10 +203,10 @@ SSL *secureConnection(const char* host, const char* port){
 /*
     closeConnection
     Close SSL connection to server
+
+    @param
 */
-void closeConnection() {
-    //  Free server's certificate
-    X509_free(serverCertificate);
+void closeConnection(SSL* ssl, SSL_CTX* sslContext, int serverSocket) {
     // Notify SSL session to shutdown
     fprintf(stdout, "%s: Closing SSL session.\n", programName);
     SSL_shutdown(ssl);
