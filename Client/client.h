@@ -1,8 +1,8 @@
 /*
- CITS3002 Project 2016
- Name:			Pradyumn Vij, Ammar Abu Shamleh
- Student number:	21469477, 21521274
- Date:			d/m/2015
+	 CITS3002 Project 2016
+	 Name:			Pradyumn Vij, Ammar Abu Shamleh
+	 Student number: 21521274, 21469477
+	 Date:           May 2016
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,7 +87,6 @@ typedef struct addrinfo {
 //------------------------------------------------------------------
 // Package accessible functions
 //------------------------------------------------------------------
-extern int openTCPConnection(const char *, const char *);
 extern void closeConnection();
 extern void usage();
 

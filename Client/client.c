@@ -1,8 +1,8 @@
 /*
 	CITS3002 Project 2016
-	Name:			Ammar Abu Shamleh, Pradyumn Vij, Goce Krlevski 
-	Student number:	21469477
-	Date:			d/m/2015
+	Name:			Ammar Abu Shamleh, Pradyumn Vij 
+	Student number: 21521274, 21469477
+    Date:           May 2016
 */
 
 #include "client.h"
@@ -33,8 +33,10 @@ void usage(void){
 
 /*
 	Main
+
 	Command Line Parser
-	@param argc 	Number of arguments (int)
+	
+    @param argc 	Number of arguments (int)
 	@param argv		Arguments (array of char arrays)
 */
 int main(int argc, char **argv) {
@@ -129,6 +131,13 @@ int main(int argc, char **argv) {
     //  Run user request
     parseRequest(host, port, action, fileName, certificateName, minCircleSize, 
         memberName, requiredMember);
+
+    //  Free allocated memory on heap
+    free(host);
+    free(port);
+    if(fileName != NULL) free(fileName);
+    if(certificateName != NULL) free(certificateName);
+    if(memberName != NULL) free(memberName);
     
     return EXIT_SUCCESS;
 }

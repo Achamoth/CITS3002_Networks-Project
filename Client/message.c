@@ -1,8 +1,8 @@
 /*
     CITS3002 Project 2016
-    Name:           Ammar Abu Shamleh, Pradyumn Vij, Goce Krlevski 
-    Student number: 21469477
-    Date:           d/m/2015
+    Name:           Ammar Abu Shamleh, Pradyumn Vij 
+    Student number: 21521274, 21469477
+    Date:           May 2016
 */
 #include "client.h"
 
@@ -10,10 +10,11 @@
     sendAction
     
     Sends the type of message to the server.
+
     @param ssl      SSL session
     @param action   Type of message
 */
-void sendAction(SSL *ssl, actionType action){
+static void sendAction(SSL *ssl, actionType action){
     if(SSL_write(ssl, &action, sizeof(int)) < 0){
         fprintf(stderr, "%s: Sending action type unsuccessful.\n", programName);
         closeConnection();
@@ -25,42 +26,16 @@ void sendAction(SSL *ssl, actionType action){
 }
 
 /*
-    readResponse
-
-    Give function an SSL connection when expecting an int response from server
-    Function reads connection and returns int response (when it arrives)
-    http://stackoverflow.com/questions/16117681/sending-int-via-socket-from-java-to-c-strange-results
-
-    @param SSL * ssl    SSL session
-*/
-int readResponse(SSL *ssl) {
-    //Reads network-byte-order int off socket stream, and converts it to host-byte-order int before returning
-    char intBuffer[4]; //Byte array for reading int
-    int i=0;
-    int receivedBytes = 0; //Counts number of bytes read (Java's writeInt() method sends 4-byte int, so we need to read 4 bytes)
-    while(receivedBytes < 4){
-        int readBytes = SSL_read(ssl, &intBuffer[i++], (sizeof intBuffer) - receivedBytes);
-        receivedBytes += readBytes;
-    }
-    //Convert byte-array to int
-    int receivedInt = *(int *) intBuffer;
+    sendFileString
     
-    //Converts int to host-byte-order and returns
-    return ntohl(receivedInt);
-}
+    Sends the name of file that is being sent to the server using active SSL
+    session.  File is formatted to remove path and newline character added to
+    the end for Java interpretation.
 
-/*
-    sendFile
-
-    Sends file from client to server.
-    @param ssl          SSL session
-    @param fileName     file to be uploaded
-    @param isCert       String determine if certificate or file
-    @param action       Type of message / action
+    @param ssl      SSL session
+    @param fileName String representing filename
 */
-//Send file (indicated by filename) to server, using open socket descriptor 'sd'
-void sendFile(SSL *ssl, char *fileName){
-    //  Format and send filename
+static void sendFileString(char *fileName, SSL *ssl){
     char *serverFormattedName = strrchr(strdup(fileName), '/');
     if(serverFormattedName == NULL) serverFormattedName = strdup(fileName);
     else serverFormattedName++;
@@ -75,19 +50,65 @@ void sendFile(SSL *ssl, char *fileName){
     else{
         fprintf(stdout, "%s: Filename sent successfully.\n", programName);
     }
+}
+
+/*
+    readResponse
+
+    Give function an SSL connection when expecting an int response from server
+    Function reads connection and returns int response (when it arrives)
+    http://stackoverflow.com/questions/16117681/sending-int-via-socket-from-java-to-c-strange-results
+
+    @param SSL * ssl    SSL session
+*/
+static int readResponse(SSL *ssl) {
+    //  Reads network-byte-order int off socket stream, and converts it to
+    //  host-byte-order int before returning
+    char intBuffer[4]; //Byte array for reading int
+    //  Counts number of bytes read (Java's writeInt() method sends 4-byte int, 
+    //  so we need to read 4 bytes)
+    int receivedBytes = 0; 
+    int i = 0;
+    while(receivedBytes < 4){
+        int readBytes = SSL_read(ssl, &intBuffer[i++], 
+            (sizeof intBuffer) - receivedBytes);
+        receivedBytes += readBytes;
+    }
+    //  Convert byte-array to int
+    int receivedInt = *(int *) intBuffer;
+    
+    //  Converts int to host-byte-order and returns
+    return ntohl(receivedInt);
+}
+
+/*
+    sendFile
+
+    Sends file from client to server.
+
+    @param ssl          SSL session
+    @param fileName     file to be uploaded
+    @param isCert       String determine if certificate or file
+    @param action       Type of message / action
+*/
+static void sendFile(SSL *ssl, char *fileName){
+    // Send file name to server
+    sendFileString(fileName, ssl);
     
     //  Wait for server response    
-    //  Confirm response is a positive acknowledgment
     int response = readResponse(ssl);
+    //  Confirm response is a positive acknowledgment
     if(response != ACKNOWLEDGMENT){
         fprintf(stderr, "%s Error: Acknowledgment not received.\n",
             programName);
-        fprintf(stderr, "Response received. %d\n", response);
+        fprintf(stderr, "%s: Error: Acknowledgment not received.\n Response " 
+            "fromOldTrusty Server: %d\n", programName, response);
         closeConnection();
         exit(EXIT_FAILURE);
     }
     else{
-        fprintf(stdout, "%s: Server acknowledgement recieved.\n", programName);
+        fprintf(stdout, "%s: Server acknowledgement recieved.\nSending file.",
+            programName);
     }
     
     //  Create file pointer
@@ -99,11 +120,25 @@ void sendFile(SSL *ssl, char *fileName){
     }
     
     //  Send file to server, one byte at a time
-    char *buffer = (char *) malloc(sizeof(char));
-    int bytes = fread(buffer, 1, sizeof(char), fp);
+    //char *buffer = (char *) malloc(sizeof(char));
+    char buffer[1024];
+    int written;
+    int bytes = (int) fread(buffer, 1, sizeof(buffer), fp);
     while(bytes > 0) {
-        SSL_write(ssl, buffer, sizeof(char));
-        bytes = fread(buffer, 1, 1, fp);
+        written = SSL_write(ssl, buffer, sizeof(buffer));
+        if(written != bytes){
+            fprintf(stderr, "%s: File Transfer Error.\n", programName);
+            closeConnection();
+            exit(EXIT_FAILURE);
+        }
+        bytes = (int) fread(buffer, 1, sizeof(buffer), fp);
+    }
+    //  Check reason for closure
+    if(bytes == SSL_ERROR_ZERO_RETURN){
+        fprintf(stdout, "%s: File Successfully sent.", programName); 
+    }
+    else{
+        SSL_get_error(ssl, bytes); 
     }
     
     //  Free allocated memory and close resources
@@ -111,57 +146,88 @@ void sendFile(SSL *ssl, char *fileName){
     free(buffer);
 }
 
-//Request that server send file (indicated by filename), using open socket descriptor 'sd'
-void getFile(SSL *ssl, char *filename) {
-    int success;
 
-    //Now, send file name
-    char *filename_to_server = strdup(filename);
-    filename_to_server[strlen(filename_to_server)] = '\n';
-    success = SSL_write(ssl, filename_to_server, sizeof(char)*strlen(filename_to_server));
-    if(success<0) {
-        printf("Error sending action number\n");
-        closeConnection();
-        exit(EXIT_FAILURE);
-    }
+
+
+//Request that server send file (indicated by filename)
+//  Place in STDOUT, don't need to save
+void getFile(SSL *ssl, char *fileName, int security) {
+    // need to send security length
+
+    //  Send the name of file required
+    sendFileString(fileName, ssl);
     
-    //Wait for server to send response (indentifying whether or not it has the file)
+    //  Wait for server's response on availability of file
     int response;
     response = readResponse(ssl);
     if(response != FILE_FOUND) {
-        if(response == FILE_NOT_FOUND) printf("Error. Requested file doesn't exist on server\n");
-        else printf("Unkown error occured. %d\n", response);
+        if(response == FILE_NOT_FOUND){
+            fprintf(stderr, "%s Error: Requested file cannot be found on" 
+                "server\n", programName);
+        }
+        else{   // Inappropriate repsonse from Server
+            fprintf(stderr, "%s: Unkown error occured.\n Response from "
+                "OldTrusty Server: %d\n", programName, response);
+        }
         closeConnection();
         exit(EXIT_FAILURE);
     }
-    
-    //Wait for server to report whether or not file meets trust requirements (DOESN'T WORK PROPERLY)
-    response = readResponse(ssl);
-    if(response != FILE_TRUSTWORTHY) {
-        if(response == FILE_UNTRUSTWORTHY) printf("The file does not meet the specified trust requirements\n");
-        else printf("Unknown error occured. %d\n", response);
+    else{   // file found
+        fprintf(stdout, "%s: File found on server.\n", programName);
+        //  Wait for server to report on trustworthiness (DOESN'T WORK PROPERLY)
+        response = readResponse(ssl);
+        if(response != FILE_TRUSTWORTHY) {
+            if(response == FILE_UNTRUSTWORTHY){
+                fprintf(stdout, "File does not meet your specified trust "
+                    "requirements.\n");
+            }
+            else{   // Inappropriate response from Server
+                fprintf(stderr, "%s: Unkown error occured.\n Response from "
+                    "OldTrusty Server: %d\n", programName, response);
+            }
+            closeConnection();
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    fprintf(stdout, "%s: File downloading...\n", programName);    
+    //  Create file pointer
+    FILE *fp = fopen(fileName, "wb");
+    if(fp == NULL) {
+        perror("File Pointer");
         closeConnection();
         exit(EXIT_FAILURE);
     }
-    
-    //Wait for server to send file, and read it one byte at a time, writing each byte to file as it comes in
-    FILE *fpout = fopen(filename, "wb");
-    char *buffer = (char *) malloc(sizeof(char));
-    int n;
-    n = SSL_read(ssl, buffer, sizeof(char));
-    while(n > 0) {
-        fwrite(buffer, 1, sizeof(char), fpout);
-        n = SSL_read(ssl, buffer, sizeof(char));
+    //  Wait for server to send file, and read it one byte at a time, writing 
+    //  each byte to file as it comes in
+    unsigned char buffer[1024];
+    int written;
+    int bytes = SSL_read(ssl, buffer, sizeof(buffer));
+    while(bytes > 0) {
+        written = (int) fwrite(buffer, 1, sizeof(buffer), fp);
+        if(written != bytes){
+            fprintf(stderr, "%s: File Transfer Error.\n", programName);
+            closeConnection();
+            exit(EXIT_FAILURE);
+        }
+        bytes = SSL_read(ssl, buffer, sizeof(char));
     }
-    
+    //  Check reason for closure
+    if(bytes == SSL_ERROR_ZERO_RETURN){
+        fprintf(stdout, "%s: File Download Complete.", programName); 
+    }
+    else{
+        SSL_get_error(ssl, bytes); 
+    }
     //Free all memory and close resources
-    fclose(fpout);
+    fclose(fp);
     free(buffer);
 }
 
 
 /*
     sendMessage
+
     Parse the type of message required, direct user input appropriately
     
     @param  host         Server address (IPV4, can be changed to IPV6 in future)
@@ -187,7 +253,7 @@ void parseRequest(char *host, char *port, actionType action, char *file,
     switch(action) {
         case PUSH:{
             //  Check for file presence
-            if(file == NULL && certificate == NULL){
+            if(file == NULL){
                 fprintf(stderr, "%s: File to upload not found.\n", programName);
                 usage();
             }
@@ -198,12 +264,13 @@ void parseRequest(char *host, char *port, actionType action, char *file,
         case PULL:
             //Download file from server
             sendAction(ssl, PULL);
-            getFile(ssl, file);
+            getFile(ssl, file, minCircle);
             break;
         case PUSH_CERT:
             //Upload certificate to server
             if(certificate == NULL) {
-                fprintf(stderr, "%s: Certificate to upload not found.\n", programName);
+                fprintf(stderr, "%s: Certificate to upload not found.\n", 
+                    programName);
                 usage();
             }
             sendAction(ssl, PUSH_CERT);

@@ -1,8 +1,8 @@
 /*
     CITS3002 Project 2016
     Name:           Ammar Abu Shamleh, Pradyumn Vij 
-    Student number: 21469477
-    Date:           d/m/2015
+    Student number: 21521274, 21469477
+    Date:           May 2016
 */
 #include "client.h"
 #define PUBLIC_KEY "certificates/public.crt"
@@ -14,12 +14,14 @@ static int serverSocket;
 
 /*
     openTCPConnection
+
     Open a socket and connect using TCP protocol
+    
     @param host     Server address
     @param port     Server port
     @return         Open socket
 */
-int openTCPConnection(const char *host, const char *port){
+static int openTCPConnection(const char *host, const char *port){
     struct addrinfo hostReq;
     struct addrinfo *hostFound;
     int addrInfo_Error;
@@ -74,6 +76,7 @@ int openTCPConnection(const char *host, const char *port){
 
 /*
     makeSSLContext
+
     Initialises SSL functions and libraries
     Loads context with private key and public certificate.
     Verifies certificate and key.
@@ -82,7 +85,7 @@ int openTCPConnection(const char *host, const char *port){
                         descriptor for ssl session.
 
 */
-SSL_CTX *makeSSLContext(){
+static SSL_CTX *makeSSLContext(){
     //  Initialise SSL library--------------------------------------------------
     SSL_load_error_strings();
     //  OpenSSL 1.02 and below load crypt:
@@ -137,7 +140,41 @@ SSL_CTX *makeSSLContext(){
 }
 
 /*
+    printSSLCert
+
+    Prints issuer and subject details in certificate.
+    Also checks if certificate is NULL.
+
+    @param session  SSL session pointer after successful handshake
+*/
+static void checkCert(SSL *session){
+    X509 *serverCertificate = SSL_get_peer_certificate(session);
+    if(serverCertificate == NULL){
+        fprintf(stderr, "%s: No public certificate provided by server, "
+            "disconnecting.", programName);
+        exit(EXIT_FAILURE);
+    }
+    else{
+        fprintf(stdout, "%s: Server certificate received.\n", programName);
+    }
+
+    fprintf(stdout, "Server certificate details:\n");
+    //  Print Issuer to stdout
+    X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(serverCertificate), 2, 
+        XN_FLAG_MULTILINE);
+    fprintf(stdout, "\n%s: Server certificate subject (if any):\n", 
+        programName);
+    X509_NAME_print_ex_fp(stdout, X509_get_subject_name(serverCertificate), 2, 
+        XN_FLAG_MULTILINE);
+    printf("\n");
+
+    //  Free server's certificate
+    X509_free(serverCertificate);
+}
+
+/*
     secureConnection
+
     Intialise SSL context and negotiate secure transmission with
     server.
 
@@ -151,7 +188,6 @@ SSL *secureConnection(const char* host, const char* port){
     fprintf(stdout, "%s: Contacting server...\n", programName);
     //  Find and open TCP socket to server
     serverSocket = openTCPConnection(host, port);
-
 
     // Create SSL session / handle
     ssl = SSL_new(sslContext);
@@ -179,34 +215,16 @@ SSL *secureConnection(const char* host, const char* port){
     fprintf(stdout, "%s: SSL session encrypted using:\n\t%s\n", programName,
         SSL_get_cipher(ssl));
 
-    X509 *serverCertificate = SSL_get_peer_certificate(ssl);
-    if(serverCertificate == NULL){
-        fprintf(stderr, "%s: No public certificate provided by server, "
-            "disconnecting.", programName);
-        exit(EXIT_FAILURE);
-    }
-    else{
-        fprintf(stdout, "%s: Server certificate received.\n", programName);
-    }
-
-    fprintf(stdout, "Server certificate details:\n");
-    //  Print Issuer to stdout
-    X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(serverCertificate), 2, 
-        XN_FLAG_MULTILINE);
-    fprintf(stdout, "\n%s: Server certificate subject (if any):\n", 
-        programName);
-    X509_NAME_print_ex_fp(stdout, X509_get_subject_name(serverCertificate), 2, 
-        XN_FLAG_MULTILINE);
-    printf("\n");
-
-    //  Free server's certificate
-    X509_free(serverCertificate);
+    // Print Host's SSL certificate information
+    checkCert(ssl);
+    
     //Return open SSL connection
     return ssl;
 }
 
 /*
     closeConnection
+
     Close SSL connection to server
 
     @param
