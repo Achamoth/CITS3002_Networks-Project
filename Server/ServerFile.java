@@ -1,3 +1,10 @@
+/*
+ CITS3002 Project 2016
+ Name:			Ammar Abu Shamleh
+ Student number: 21521274
+ Date:           May 2016
+ */
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Set;
@@ -33,7 +40,7 @@ public class ServerFile {
         return this.filename;
     }
     
-    //Calculates a cricle of trust, and checks that the circle satisfies given requirements. Returns true or false
+    //Calculates a circle of trust, and checks that the circle satisfies given requirements. Returns true or false
     //TODO: Note, if minCircleSize is 1, we'll just have to check for self-signed certificates manually without using the graph, since the graph doesn't allow for loops
     public boolean meetsRequirements(int minCircleSize, String requiredMember) {
         //Need to start by initializing graph with vouchers
