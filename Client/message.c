@@ -119,21 +119,21 @@ static void sendFile(SSL *ssl, char *fileName){
         exit(EXIT_FAILURE);
     }
     
-    //  Send file to server, one byte at a time
-    //char *buffer = (char *) malloc(sizeof(char));
-    
-    //DOESN'T WORK PROPERLY
+    //  Send file to server in 1024 byte chunks
     char buffer[1024];
-    int written;
-    int bytes = (int) fread(buffer, 1, sizeof(buffer), fp);
+    int written = 0;
+    int read = 0;
+    int bytes = (int) fread(buffer, sizeof(char), sizeof(buffer), fp);
+    read += bytes;
     while(bytes > 0) {
-        written = SSL_write(ssl, buffer, sizeof(buffer));
+        written += SSL_write(ssl, buffer, bytes);
         bytes = (int) fread(buffer, 1, sizeof(buffer), fp);
-        if(written != bytes){
-            fprintf(stderr, "%s: File Transfer Error.\n", programName);
-            closeConnection();
-            exit(EXIT_FAILURE);
-        }
+        read += bytes;
+    }
+    if(written != read){
+        fprintf(stderr, "%s: File Transfer Error.\n", programName);
+        closeConnection();
+        exit(EXIT_FAILURE);
     }
     //  Check reason for closure
     if(bytes == SSL_ERROR_ZERO_RETURN){
@@ -199,20 +199,21 @@ void getFile(SSL *ssl, char *fileName, int security) {
         closeConnection();
         exit(EXIT_FAILURE);
     }
-    //  Wait for server to send file, and read it one byte at a time, writing 
-    //  each byte to file as it comes in
-    //DOESN'T WORK PROPERLY
+    //  Wait for server to send file, and read it 1024 bytes at a time
     unsigned char buffer[1024];
-    int written;
+    int written = 0;
+    int read = 0;
     int bytes = SSL_read(ssl, buffer, sizeof(buffer));
+    read += bytes;
     while(bytes > 0) {
-        written = (int) fwrite(buffer, 1, sizeof(buffer), fp);
-        if(written != bytes){
-            fprintf(stderr, "%s: File Transfer Error.\n", programName);
-            closeConnection();
-            exit(EXIT_FAILURE);
-        }
+        written += (int) fwrite(buffer, 1, bytes, fp);
         bytes = SSL_read(ssl, buffer, sizeof(char));
+        read += bytes;
+    }
+    if(written != read){
+        fprintf(stderr, "%s: File Transfer Error.\n", programName);
+        closeConnection();
+        exit(EXIT_FAILURE);
     }
     //  Check reason for closure
     if(bytes == SSL_ERROR_ZERO_RETURN){
