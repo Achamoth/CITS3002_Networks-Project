@@ -45,9 +45,6 @@ public class Server {
         
         //TODO: Read csv file containing 'files' data
         
-		/*//Establish new socket that monitors specified port
-         //ServerSocket s = null;*/
-        
         //Initialize string pemPath
         String pemPath = System.getProperty("user.dir") + "/PEM/";
         
@@ -160,7 +157,7 @@ public class Server {
 	}
 	
 	//Read file (pointed to by filename) into array of bytes, and return it
-	private static byte[] fileToBytes(String filename) throws FileDoesntExist {
+	public static byte[] fileToBytes(String filename) throws FileDoesntExist {
 		File f = new File(filename);
 		int nbytes = (int) f.length();
 		byte[] result = new byte[nbytes];
@@ -303,6 +300,8 @@ public class Server {
         
         //TODO: Check circle size on file against client specifications
         //TODO: Check if any circle contain required member (if client has specified one)
+        ServerFile f = findFile(filename);
+        f.meetsRequirements(0, null);
         return true; //For now
     }
     
