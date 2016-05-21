@@ -1,8 +1,8 @@
 /*
 	CITS3002 Project 2016
-	Name:			Ammar Abu Shamleh, Pradyumn Vij, Goce Krlevski 
-	Student number:	21469477
-	Date:			d/m/2015
+	Name:			Ammar Abu Shamleh, Pradyumn Vij 
+	Student number: 21521274, 21469477
+    Date:           May 2016
 */
 
 #include "client.h"
@@ -33,8 +33,10 @@ void usage(void){
 
 /*
 	Main
+
 	Command Line Parser
-	@param argc 	Number of arguments (int)
+	
+    @param argc 	Number of arguments (int)
 	@param argv		Arguments (array of char arrays)
 */
 int main(int argc, char **argv) {
@@ -48,13 +50,14 @@ int main(int argc, char **argv) {
         usage();
     }
     
-    char* host = NULL;	// possibly set as a default
-	char* port = NULL;	// possibly set as a default
+    char* host = NULL;
+	char* port = NULL;
 	char* fileName = NULL;
 	char* certificateName = NULL;
 	char* memberName = NULL;
 	int minCircleSize = 0;
 	actionType action = NONE;
+    bool requiredMember = false;
 
     
     //	Parse command line args
@@ -90,12 +93,12 @@ int main(int argc, char **argv) {
                 break;
             case 'n':
                 //  Require circle of trust to involve named person
-            	action = CHECK;
+                requiredMember = true;
             	memberName = strdup(optarg);
                 break;
             case 'u':
                 //  Upload new certificate to server
-            	action = PUSH;
+            	action = PUSH_CERT;
                 certificateName = strdup(optarg);
                 break;	
             case 'v':
@@ -127,7 +130,14 @@ int main(int argc, char **argv) {
 
     //  Run user request
     parseRequest(host, port, action, fileName, certificateName, minCircleSize, 
-        memberName);
+        memberName, requiredMember);
+
+    //  Free allocated memory on heap
+    free(host);
+    free(port);
+    if(fileName != NULL) free(fileName);
+    if(certificateName != NULL) free(certificateName);
+    if(memberName != NULL) free(memberName);
     
     return EXIT_SUCCESS;
 }

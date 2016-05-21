@@ -1,21 +1,27 @@
 /*
     CITS3002 Project 2016
-    Name:           Ammar Abu Shamleh, Pradyumn Vij, Goce Krlevski 
-    Student number: 21469477
-    Date:           d/m/2015
+    Name:           Ammar Abu Shamleh, Pradyumn Vij 
+    Student number: 21521274, 21469477
+    Date:           May 2016
 */
 #include "client.h"
 #define PUBLIC_KEY "certificates/public.crt"
 #define PRIVATE_KEY "certificates/private.key"
 
+static SSL* ssl;
+static SSL_CTX* sslContext;
+static int serverSocket;
+
 /*
     openTCPConnection
+
     Open a socket and connect using TCP protocol
+    
     @param host     Server address
     @param port     Server port
     @return         Open socket
 */
-int openTCPConnection(const char *host, const char *port){
+static int openTCPConnection(const char *host, const char *port){
     struct addrinfo hostReq;
     struct addrinfo *hostFound;
     int addrInfo_Error;
@@ -70,6 +76,7 @@ int openTCPConnection(const char *host, const char *port){
 
 /*
     makeSSLContext
+
     Initialises SSL functions and libraries
     Loads context with private key and public certificate.
     Verifies certificate and key.
@@ -78,14 +85,14 @@ int openTCPConnection(const char *host, const char *port){
                         descriptor for ssl session.
 
 */
-SSL_CTX *makeSSLContext(){
+static SSL_CTX *makeSSLContext(){
     //  Initialise SSL library--------------------------------------------------
     SSL_load_error_strings();
     //  OpenSSL 1.02 and below load crypt:
     SSL_library_init(); //  Loads encryption and hashing for SSL program
     OpenSSL_add_all_algorithms(); // cryptogrophy, intialise ciphers and digests
     //  Create SSL context - client in this case using SSLv3
-    SSL_CTX *sslContext = SSL_CTX_new(SSLv3_client_method());
+    sslContext = SSL_CTX_new(SSLv3_client_method());
     if(sslContext == NULL){
         fprintf(stderr, "\n%s: SSL: Failed to create new context.\n", 
             programName);
@@ -133,21 +140,57 @@ SSL_CTX *makeSSLContext(){
 }
 
 /*
-    secureConnection
-    Intialise SSL context and negotiate secure transmission with
-    server
-*/
-void secureConnection(const char* host, const char* port){
+    printSSLCert
 
-    SSL_CTX *sslContext = makeSSLContext();    
+    Prints issuer and subject details in certificate.
+    Also checks if certificate is NULL.
+
+    @param session  SSL session pointer after successful handshake
+*/
+static void checkCert(SSL *session){
+    X509 *serverCertificate = SSL_get_peer_certificate(session);
+    if(serverCertificate == NULL){
+        fprintf(stderr, "%s: No public certificate provided by server, "
+            "disconnecting.", programName);
+        exit(EXIT_FAILURE);
+    }
+    else{
+        fprintf(stdout, "%s: Server certificate received.\n", programName);
+    }
+
+    fprintf(stdout, "Server certificate details:\n");
+    //  Print Issuer to stdout
+    X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(serverCertificate), 2, 
+        XN_FLAG_MULTILINE);
+    fprintf(stdout, "\n%s: Server certificate subject (if any):\n", 
+        programName);
+    X509_NAME_print_ex_fp(stdout, X509_get_subject_name(serverCertificate), 2, 
+        XN_FLAG_MULTILINE);
+    printf("\n");
+
+    //  Free server's certificate
+    X509_free(serverCertificate);
+}
+
+/*
+    secureConnection
+
+    Intialise SSL context and negotiate secure transmission with
+    server.
+
+    @param  host    Server address
+    @param  port    Server port
+    @return open SSL Session
+*/
+SSL *secureConnection(const char* host, const char* port){
+    sslContext = makeSSLContext();
     
     fprintf(stdout, "%s: Contacting server...\n", programName);
     //  Find and open TCP socket to server
-    int serverSocket = openTCPConnection(host, port);
-
+    serverSocket = openTCPConnection(host, port);
 
     // Create SSL session / handle
-    SSL *ssl = SSL_new(sslContext);
+    ssl = SSL_new(sslContext);
     if(ssl == NULL){
         fprintf(stderr, "%s: SSL: Failed to create new session.\n", 
             programName);
@@ -172,38 +215,21 @@ void secureConnection(const char* host, const char* port){
     fprintf(stdout, "%s: SSL session encrypted using:\n\t%s\n", programName,
         SSL_get_cipher(ssl));
 
-    X509* serverCertificate = SSL_get_peer_certificate(ssl);
-    if(serverCertificate == NULL){
-        fprintf(stderr, "%s: No public certificate provided by server, "
-            "disconnecting.", programName);
-        exit(EXIT_FAILURE);
-    }
-    else{
-        fprintf(stdout, "%s: Server certificate received.\n", programName);
-    }
+    // Print Host's SSL certificate information
+    checkCert(ssl);
+    
+    //Return open SSL connection
+    return ssl;
+}
 
-    fprintf(stdout, "Server certificate details:\n");
-    //  Print Issuer to stdout
-    X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(serverCertificate), 2, 
-        XN_FLAG_MULTILINE);
-    fprintf(stdout, "\n%s: Server certificate subject (if any):\n", 
-        programName);
-    X509_NAME_print_ex_fp(stdout, X509_get_subject_name(serverCertificate), 2, 
-        XN_FLAG_MULTILINE);
+/*
+    closeConnection
 
-    //TODO ADD DATA TO BE EXCHANGED
+    Close SSL connection to server
 
-    char buf[1024];
-    int bytes;
-    char *message = "hello world!";
-
-    SSL_write(ssl, message, strlen(message));
-    bytes = SSL_read(ssl, buf, sizeof(buf));
-    buf[bytes] = '\0';
-    printf("got %d chars: '%s'\n", bytes, buf);
-
-    //  Free server's certificate
-    X509_free(serverCertificate);
+    @param
+*/
+void closeConnection() {
     // Notify SSL session to shutdown
     fprintf(stdout, "%s: Closing SSL session.\n", programName);
     SSL_shutdown(ssl);

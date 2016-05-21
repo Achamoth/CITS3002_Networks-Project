@@ -1,6 +1,6 @@
 # CITS3002 Project 2016
-# Name:                 Pradyumn Vij
-# Student number(s):    21469477
+# Name:                 Pradyumn Vij, Ammar Abu Shamleh
+# Student number(s):    21469477, 21521274
 # Date:                 6/05/2016
 
 #   Make file for Oldtrusty Client program

@@ -27,7 +27,7 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 
 //Code ideas for server taken from "Core Java: Volume 2. Chapter 3: Networking"
 public class Server {
-
+    
     private static final int PORT = 8889;
     private static final int BUFFER_SIZE = 100;
     
@@ -46,7 +46,7 @@ public class Server {
         //TODO: Read csv file containing 'files' data
         
 		/*//Establish new socket that monitors specified port
-        //ServerSocket s = null;*/
+         //ServerSocket s = null;*/
         
         //Initialize string pemPath
         String pemPath = System.getProperty("user.dir") + "/PEM/";
@@ -60,6 +60,7 @@ public class Server {
             s = (SSLServerSocket) sslserversocketfactory.createServerSocket(PORT);
         } catch(Exception e) {
             e.printStackTrace();
+            System.exit(0);
         }
 		
         int i = 1;
@@ -103,58 +104,63 @@ public class Server {
 	//Reference: http://stackoverflow.com/questions/12501117/programmatically-obtain-keystore-from-pem
 	//Reference: http://www.bouncycastle.org/wiki/display/JA1/Provider+Installation
 	private static SSLServerSocketFactory getServerSocketFactoryPEM(String pemPath) throws Exception {
-		//Ad bouncy castle provider for Java Security API
-		Security.addProvider(new BouncyCastleProvider());
+        SSLContext context = null;
+		try {
+            //Add bouncy castle provider for Java Security API
+            Security.addProvider(new BouncyCastleProvider());
 			
-		//Set context to SSL
-		SSLContext context = SSLContext.getInstance("SSL");
-		
-		//Read certificate into byte array
-		byte[] certBytes = fileToBytes(pemPath + "public.crt");
-		//Read private key into byte array
-		byte[] keyBytes = fileToBytes(pemPath + "private.key");
-		
-		PemReader reader;
-		PEMParser parser;
-		PemObject temp;
-				
-		//Use reader to create X509CertificateHolder object from corresponding byte array
-		reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(certBytes)));
-		parser = new PEMParser(reader);
-		X509CertificateHolder certHolder = (X509CertificateHolder)parser.readObject();
-        
-        //Now convert X509CertificateHolder to X509Certificate http://stackoverflow.com/questions/6370368/bouncycastle-x509certificateholder-to-x509certificate
-        JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
-        X509Certificate cert = certConverter.setProvider("BC").getCertificate(certHolder);
-		
-		//Use reader to create PrivateKeyInfo object from corresponding byte array
-		reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(keyBytes)));
-		parser = new PEMParser(reader);
-		PrivateKeyInfo keyInfo = (PrivateKeyInfo)parser.readObject();
-        
-        //Now convert PrivateKeyInfo to java.security.PrivateKey
-        JcaPEMKeyConverter keyConverter = new JcaPEMKeyConverter();
-        PrivateKey key = keyConverter.setProvider("BC").getPrivateKey(keyInfo);
-		
-		//Create dynamic keystore to use for SSL context
-		KeyStore keystore = KeyStore.getInstance("JKS");
-		keystore.load(null);
-		keystore.setCertificateEntry("server-cert", cert);
-		Certificate[] certChain = {cert}; //Certificate chain for private key (verifying corresponding public key)
-		keystore.setKeyEntry("server-key", key, "password".toCharArray(), certChain); 
-		
-		//Create and initialise key manager factory using "SunX509" algorithm
-		KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
-		kmf.init(keystore, "password".toCharArray());
-		
-		KeyManager[] km = kmf.getKeyManagers();
-		context.init(km, null, null);
-		
-		return context.getServerSocketFactory();
+            //Set context to SSL
+            context = SSLContext.getInstance("SSL");
+            
+            //Read certificate into byte array
+            byte[] certBytes = fileToBytes(pemPath + "public.crt");
+            //Read private key into byte array
+            byte[] keyBytes = fileToBytes(pemPath + "private.key");
+            
+            PemReader reader;
+            PEMParser parser;
+            PemObject temp;
+            
+            //Use reader to create X509CertificateHolder object from corresponding byte array
+            reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(certBytes)));
+            parser = new PEMParser(reader);
+            X509CertificateHolder certHolder = (X509CertificateHolder)parser.readObject();
+            
+            //Now convert X509CertificateHolder to X509Certificate http://stackoverflow.com/questions/6370368/bouncycastle-x509certificateholder-to-x509certificate
+            JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
+            X509Certificate cert = certConverter.setProvider("BC").getCertificate(certHolder);
+            
+            //Use reader to create PrivateKeyInfo object from corresponding byte array
+            reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(keyBytes)));
+            parser = new PEMParser(reader);
+            PrivateKeyInfo keyInfo = (PrivateKeyInfo)parser.readObject();
+            
+            //Now convert PrivateKeyInfo to java.security.PrivateKey
+            JcaPEMKeyConverter keyConverter = new JcaPEMKeyConverter();
+            PrivateKey key = keyConverter.setProvider("BC").getPrivateKey(keyInfo);
+            
+            //Create dynamic keystore to use for SSL context
+            KeyStore keystore = KeyStore.getInstance("JKS");
+            keystore.load(null);
+            keystore.setCertificateEntry("server-cert", cert);
+            Certificate[] certChain = {cert}; //Certificate chain for private key (verifying corresponding public key)
+            keystore.setKeyEntry("server-key", key, "password".toCharArray(), certChain);
+            
+            //Create and initialise key manager factory using "SunX509" algorithm
+            KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+            kmf.init(keystore, "password".toCharArray());
+            
+            KeyManager[] km = kmf.getKeyManagers();
+            context.init(km, null, null);
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return context.getServerSocketFactory();
 	}
 	
 	//Read file (pointed to by filename) into array of bytes, and return it
-	private static byte[] fileToBytes(String filename) {
+	private static byte[] fileToBytes(String filename) throws FileDoesntExist {
 		File f = new File(filename);
 		int nbytes = (int) f.length();
 		byte[] result = new byte[nbytes];
@@ -288,9 +294,9 @@ public class Server {
     private static boolean checkTrust(String filename) {
         //Activate below code when I develop ServerFile further
         /*ServerFile f = findFile(filename);
-        if(f == null) {
-            //Oh oh. This should never really happen
-        }*/
+         if(f == null) {
+         //Oh oh. This should never really happen
+         }*/
         
         //TODO: Check circle size on file against client specifications
         //TODO: Check if any circle contain required member (if client has specified one)
