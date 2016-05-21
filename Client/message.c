@@ -121,17 +121,19 @@ static void sendFile(SSL *ssl, char *fileName){
     
     //  Send file to server, one byte at a time
     //char *buffer = (char *) malloc(sizeof(char));
+    
+    //DOESN'T WORK PROPERLY
     char buffer[1024];
     int written;
     int bytes = (int) fread(buffer, 1, sizeof(buffer), fp);
     while(bytes > 0) {
         written = SSL_write(ssl, buffer, sizeof(buffer));
+        bytes = (int) fread(buffer, 1, sizeof(buffer), fp);
         if(written != bytes){
             fprintf(stderr, "%s: File Transfer Error.\n", programName);
             closeConnection();
             exit(EXIT_FAILURE);
         }
-        bytes = (int) fread(buffer, 1, sizeof(buffer), fp);
     }
     //  Check reason for closure
     if(bytes == SSL_ERROR_ZERO_RETURN){
@@ -143,7 +145,6 @@ static void sendFile(SSL *ssl, char *fileName){
     
     //  Free allocated memory and close resources
     fclose(fp);
-    free(buffer);
 }
 
 
@@ -200,6 +201,7 @@ void getFile(SSL *ssl, char *fileName, int security) {
     }
     //  Wait for server to send file, and read it one byte at a time, writing 
     //  each byte to file as it comes in
+    //DOESN'T WORK PROPERLY
     unsigned char buffer[1024];
     int written;
     int bytes = SSL_read(ssl, buffer, sizeof(buffer));
@@ -221,7 +223,6 @@ void getFile(SSL *ssl, char *fileName, int security) {
     }
     //Free all memory and close resources
     fclose(fp);
-    free(buffer);
 }
 
 
