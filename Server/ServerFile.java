@@ -16,9 +16,9 @@ public class ServerFile {
     }
     
     //Vouches for this file with a given certificate
-    public void vouch(Person p) {
+    public void vouch(String certName) {
         //Add voucher to 'vouchers'
-        vouchers.add(p.getName());
+        //vouchers.add(p.getName());
         
         //Add client and their certificate signer to graph
     }

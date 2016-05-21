@@ -150,7 +150,12 @@ static void sendFile(SSL *ssl, char *fileName){
 //  Place in STDOUT, don't need to save
 void getFile(SSL *ssl, char *fileName, int security) {
     // need to send security length
-
+    if(SSL_write(ssl, &security, sizeof(int)) < 0) {
+        fprintf(stderr, "%s: Sending required circle size unsuccessful.\n", programName);
+        closeConnection();
+        exit(EXIT_FAILURE);
+    }
+    
     //  Send the name of file required
     sendFileString(fileName, ssl);
     
@@ -222,6 +227,9 @@ void getFile(SSL *ssl, char *fileName, int security) {
     fclose(fp);
 }
 
+//Request that server vouch for specified file with specified certificate
+
+
 
 /*
     sendMessage
@@ -274,6 +282,19 @@ void parseRequest(char *host, char *port, actionType action, char *file,
             sendAction(ssl, PUSH_CERT);
             sendFile(ssl, certificate);
             break;
+        case VOUCH:
+            //Vouch for specified file with specified certificate
+            if(file == NULL) {
+                fprintf(stderr, "%s: File to vouch for not found.\n", programName);
+                usage();
+            }
+            else if(certificate == NULL) {
+                fprintf(stderr, "%s: Certificate to vouch with not found.\n", programName);
+                usage();
+            }
+            sendAction(ssl, VOUCH);
+            //vouch(ssl, file, certificate);
+            break;
         default:
             // Error action should be set
             fprintf(stderr, "%s: Action not set while parsing user request\n",
@@ -284,8 +305,3 @@ void parseRequest(char *host, char *port, actionType action, char *file,
     //Close connection to server
     closeConnection();
 }
-
-
-
-
-
