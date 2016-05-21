@@ -153,6 +153,18 @@ void getFile(SSL *ssl, char *fileName, int security) {
 
     //  Send the name of file required
     sendFileString(fileName, ssl);
+
+    //  Send security level required
+    if(SSL_write(ssl, &action, sizeof(int)) < 0){
+        fprintf(stderr, "%s Error: Sending security level unsuccessful.\n", 
+            programName);
+        closeConnection();
+        exit(EXIT_FAILURE);
+    }
+    else{
+        fprintf(stdout, "%s: Requesting file security %d.\n",
+            programName, security);
+    }
     
     //  Wait for server's response on availability of file
     int response;
@@ -280,7 +292,7 @@ void parseRequest(char *host, char *port, actionType action, char *file,
                 programName);
             exit(EXIT_FAILURE);
     }
-    fprintf(stdout, "%s: Exiting Client...\n", programName);
+    fprintf(stdout, "%s: Disconnecting from Server...\n", programName);
     //Close connection to server
     closeConnection();
 }

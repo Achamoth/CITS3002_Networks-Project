@@ -132,6 +132,7 @@ int main(int argc, char **argv) {
     parseRequest(host, port, action, fileName, certificateName, minCircleSize, 
         memberName, requiredMember);
 
+    fprintf(stdout, "%s: Exiting Client.\n", programName);
     //  Free allocated memory on heap
     free(host);
     free(port);

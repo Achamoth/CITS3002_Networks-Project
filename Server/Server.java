@@ -47,6 +47,10 @@ public class Server {
         
 		/*//Establish new socket that monitors specified port
          //ServerSocket s = null;*/
+
+
+        //  Initialise signature file data and directory
+        Security.initialise();
         
         //Initialize string pemPath
         String pemPath = System.getProperty("user.dir") + "/PEM/";
@@ -77,6 +81,8 @@ public class Server {
         } catch(Exception e) {
             e.printStackTrace();
         }
+
+
         
 		//Main server loop
 		while(true) {
