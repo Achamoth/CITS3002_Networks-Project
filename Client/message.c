@@ -107,7 +107,8 @@ static void sendFile(SSL *ssl, char *fileName){
         exit(EXIT_FAILURE);
     }
     else{
-        fprintf(stdout, "%s: Server acknowledgement recieved.\nSending file.",
+        fprintf(stdout, "%s: Server acknowledgement recieved.\n"
+            "\tSending file...\n",
             programName);
     }
     
@@ -135,14 +136,9 @@ static void sendFile(SSL *ssl, char *fileName){
         closeConnection();
         exit(EXIT_FAILURE);
     }
-    //  Check reason for closure
-    if(bytes == SSL_ERROR_ZERO_RETURN){
-        fprintf(stdout, "%s: File Successfully sent.", programName); 
-    }
     else{
-        SSL_get_error(ssl, bytes); 
+        fprintf(stdout, "%s: File Successfully sent.\n", programName);       
     }
-    
     //  Free allocated memory and close resources
     fclose(fp);
 }
@@ -284,7 +280,7 @@ void parseRequest(char *host, char *port, actionType action, char *file,
                 programName);
             exit(EXIT_FAILURE);
     }
-    
+    fprintf(stdout, "%s: Exiting Client...\n", programName);
     //Close connection to server
     closeConnection();
 }

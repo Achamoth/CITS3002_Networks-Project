@@ -158,15 +158,11 @@ static void checkCert(SSL *session){
         fprintf(stdout, "%s: Server certificate received.\n", programName);
     }
 
-    fprintf(stdout, "Server certificate details:\n");
+    fprintf(stdout, "\nServer certificate details:\n");
     //  Print Issuer to stdout
     X509_NAME_print_ex_fp(stdout, X509_get_issuer_name(serverCertificate), 2, 
         XN_FLAG_MULTILINE);
-    fprintf(stdout, "\n%s: Server certificate subject (if any):\n", 
-        programName);
-    X509_NAME_print_ex_fp(stdout, X509_get_subject_name(serverCertificate), 2, 
-        XN_FLAG_MULTILINE);
-    printf("\n");
+    fprintf(stdout, "\n\n");
 
     //  Free server's certificate
     X509_free(serverCertificate);
@@ -185,7 +181,7 @@ static void checkCert(SSL *session){
 SSL *secureConnection(const char* host, const char* port){
     sslContext = makeSSLContext();
     
-    fprintf(stdout, "%s: Contacting server...\n", programName);
+    fprintf(stdout, "\n%s: Contacting server...\n", programName);
     //  Find and open TCP socket to server
     serverSocket = openTCPConnection(host, port);
 
