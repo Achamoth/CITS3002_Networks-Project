@@ -45,9 +45,6 @@ public class Server {
         
         //TODO: Read csv file containing 'files' data
         
-		/*//Establish new socket that monitors specified port
-         //ServerSocket s = null;*/
-        
         //Initialize string pemPath
         String pemPath = System.getProperty("user.dir") + "/PEM/";
         
@@ -160,7 +157,7 @@ public class Server {
 	}
 	
 	//Read file (pointed to by filename) into array of bytes, and return it
-	private static byte[] fileToBytes(String filename) throws FileDoesntExist {
+	public static byte[] fileToBytes(String filename) throws FileDoesntExist {
 		File f = new File(filename);
 		int nbytes = (int) f.length();
 		byte[] result = new byte[nbytes];
@@ -241,6 +238,9 @@ public class Server {
         DataOutputStream dos = new DataOutputStream(outStream);
         FileInputStream fis = null;
         
+        //Read required circle size
+        int minCircleSize = inStream.read();
+        
         //Read filename
         BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
         String filename = in.readLine().trim();
@@ -260,7 +260,7 @@ public class Server {
         dos.writeInt(FILE_FOUND);
         
         //Check that file satisfies client's trust requirements
-        boolean trustworthy = checkTrust(filename);
+        boolean trustworthy = checkTrust(filename, minCircleSize);
         if(!trustworthy) {
             dos.writeInt(FILE_UNTRUSTWORTHY);
             return ;
@@ -291,7 +291,7 @@ public class Server {
         throw new Exception(message);
     }
     
-    private static boolean checkTrust(String filename) {
+    private static boolean checkTrust(String filename, int minCircleSize) {
         //Activate below code when I develop ServerFile further
         /*ServerFile f = findFile(filename);
          if(f == null) {
@@ -300,9 +300,54 @@ public class Server {
         
         //TODO: Check circle size on file against client specifications
         //TODO: Check if any circle contain required member (if client has specified one)
+        ServerFile f = findFile(filename);
+        f.meetsRequirements(0, null);
         return true; //For now
     }
     
+    //Service client request to vouch for file
+    public static void vouchForFile(Socket s) throws Exception {
+        InputStream inStream = s.getInputStream();
+        OutputStream outStream = s.getOutputStream();
+        DataOutputStream dos = new DataOutputStream(outStream);
+        BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
+        
+        //First, client will send filename
+        String filename = in.readLine().trim();
+        
+        //Check if file exists on server, and report results to client
+        ServerFile f = findFile(filename);
+        boolean fileExists = f != null;
+        
+        if(!fileExists) {
+            //If file doesn't exist, report this to client
+            dos.writeInt(FILE_NOT_FOUND);
+            return ;
+        }
+        dos.writeInt(FILE_FOUND);
+        
+        //Next, client will send certificate name
+        String certName = in.readLine().trim();
+        
+        //Check that certificate exists on server, and report results to client
+        String curPath = System.getProperty("user.dir");
+        String certPath = curPath + "/Certificates/" + certName;
+        boolean certExists = (new File(certPath).isFile());
+        
+        if(!certExists) {
+            //If certificate doesn't exist, report this to client
+            dos.writeInt(FILE_NOT_FOUND);
+            return ;
+        }
+        dos.writeInt(FILE_FOUND);
+        
+        //We've found file and certificate, so now vouch for file with certificate
+        f.vouch(certName);
+        
+        //TODO: Might want to send success code back to client. I'll leave it for now.
+    }
+    
+    //Finds specified file inside 'files' arraylist
     private static ServerFile findFile(String filename) {
         for(ServerFile f : files) {
             if(f.getFilename().trim().equals(filename)) {
@@ -318,6 +363,7 @@ class ThreadedHandler implements Runnable {
     private static final int UPLOAD = 1;
     private static final int DOWNLOAD = 2;
     private static final int UPLOAD_CERT = 3;
+    private static final int VOUCH = 6;
     
 	private Socket incoming;
 	
@@ -364,9 +410,17 @@ class ThreadedHandler implements Runnable {
                 }
                 break;
             case UPLOAD_CERT:
-                //Client wants to sned certificate
+                //Client wants to send certificate
                 try {
                     Server.saveFile(incoming, true);
+                } catch(Exception e) {
+                    e.printStackTrace();
+                }
+                break;
+            case VOUCH:
+                //Client wants to vouch for specified file with specified certificate
+                try {
+                    Server.vouchForFile(incoming);
                 } catch(Exception e) {
                     e.printStackTrace();
                 }

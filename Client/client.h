@@ -60,6 +60,7 @@ typedef enum {
 // As described in 
 // http://beej.us/guide/bgnet/output/html/multipage/ipstructsdata.html
 //------------------------------------------------------------------
+#if defined(__linux__)
 typedef struct addrinfo {
     int              ai_flags;     // AI_PASSIVE, AI_CANONNAME, etc.
     int              ai_family;    // AF_INET, AF_INET6, AF_UNSPEC
@@ -71,6 +72,7 @@ typedef struct addrinfo {
 
     struct addrinfo *ai_next;      // linked list, next node
 } addrinfo;
+#endif
 
 //------------------------------------------------------------------
 // POSIX defined functions
