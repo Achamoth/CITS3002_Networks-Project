@@ -1,5 +1,6 @@
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Set;
 import java.security.cert.X509Certificate;
 import javax.security.auth.x500.X500Principal;
 import org.bouncycastle.util.io.pem.PemReader;
@@ -36,10 +37,12 @@ public class ServerFile {
     //TODO: Note, if minCircleSize is 1, we'll just have to check for self-signed certificates manually without using the graph, since the graph doesn't allow for loops
     public boolean meetsRequirements(int minCircleSize, String requiredMember) {
         //Need to start by initializing graph with vouchers
+        DirectedMultigraph<String, DefaultEdge> circle = null;
         try {
-            DirectedMultigraph<String, DefaultEdge> circle = initGraph();
+            circle = initGraph();
         } catch (Exception e) {
             e.printStackTrace();
+            System.exit(0); //I'm not sure exiting here is a great idea
         }
         
         //Identify whether or not the circle requires a specific member
@@ -52,7 +55,15 @@ public class ServerFile {
         
         else {
             /* A specific member is required. Find all circles including that member */
-            //TODO: Find all directed cycles contained within 'circle', starting from requiredMember
+            
+            //First, find corresponding 'certOwner' string for 'requiredMember'
+            String certOwner = findVertice(requiredMember, circle);
+            
+            //If certOwner is still null, then they haven't vouched for the file. Immediately return false
+            if(certOwner == null) return false;
+            
+            //Now, we've found our required start node. Find all directed cycles from this node
+            //TODO: Find all directed cycles from certOwner
         }
         return true; //For now
     }
@@ -88,7 +99,7 @@ public class ServerFile {
             
             //Now, get name of subject (certificate owner)
             String certOwner = subject.getName();
-           
+            
             //Now, add owner to graph
             result.addVertex(certOwner);
         }
@@ -98,5 +109,27 @@ public class ServerFile {
             //Examine current certificate, and add a directed edge from signer (if they're in the graph) to owner
         }
         return result;
+    }
+    
+    //Given a graph of certificate owners, and a requiredMember (for a circle of trust), find and return the node that represents the requiredMember
+    private String findVertice(String requiredMember, DirectedMultigraph<String, DefaultEdge> circle) {
+        String certOwner = null;
+        Set<String> vertices = circle.vertexSet();
+        
+        //Check all nodes for a match
+        for(String curOwner : vertices) {
+            //Split current node's string representation into fields
+            String temp = new String(curOwner); //Since split() might modify argument
+            String[] tokens = temp.split(",");
+            //Obtain "common name" field
+            String curName = tokens[0].substring(3);
+            //Compare "common name" to requiredMember
+            if(curName.equals(requiredMember)) {
+                //If they're equal, then this node is the requiredMember
+                certOwner = curOwner;
+                break;
+            }
+        }
+        return certOwner;
     }
 }
