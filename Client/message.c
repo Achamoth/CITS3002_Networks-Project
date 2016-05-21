@@ -176,7 +176,7 @@ void getFile(SSL *ssl, char *fileName, int security) {
     }
     else{   // file found
         fprintf(stdout, "%s: File found on server.\n", programName);
-        //  Wait for server to report on trustworthiness (DOESN'T WORK PROPERLY)
+        //  Wait for server to report on trustworthiness
         response = readResponse(ssl);
         if(response != FILE_TRUSTWORTHY) {
             if(response == FILE_UNTRUSTWORTHY){
@@ -228,7 +228,45 @@ void getFile(SSL *ssl, char *fileName, int security) {
 }
 
 //Request that server vouch for specified file with specified certificate
-
+void vouch(SSL *ssl, char *file, char *certificate) {
+    //Send filename to server
+    sendFileString(file, ssl);
+    
+    //Wait for server's repsonse (on whether or not it contains the file)
+    int response = readResponse(ssl);
+    if(response != FILE_FOUND) {
+        if(response == FILE_NOT_FOUND){
+            fprintf(stderr, "%s Error: Specified file cannot be found on"
+                    "server\n", programName);
+        }
+        else{   // Inappropriate repsonse from Server
+            fprintf(stderr, "%s: Unkown error occured.\n Response from "
+                    "OldTrusty Server: %d\n", programName, response);
+        }
+        closeConnection();
+        exit(EXIT_FAILURE);
+    }
+    
+    //Next, send certificate name to server
+    sendFileString(certificate, ssl);
+    
+    //Wait for server's response (on whether or not it contains the certificate)
+    response = readResponse(ssl);
+    if(response != FILE_FOUND) {
+        if(response == FILE_NOT_FOUND){
+            fprintf(stderr, "%s Error: Specified certificate cannot be found on"
+                    "server\n", programName);
+        }
+        else{   // Inappropriate repsonse from Server
+            fprintf(stderr, "%s: Unkown error occured.\n Response from "
+                    "OldTrusty Server: %d\n", programName, response);
+        }
+        closeConnection();
+        exit(EXIT_FAILURE);
+    }
+    
+    //TODO: Might want to add some stuff here later. I'll leave it for now
+}
 
 
 /*
@@ -293,7 +331,7 @@ void parseRequest(char *host, char *port, actionType action, char *file,
                 usage();
             }
             sendAction(ssl, VOUCH);
-            //vouch(ssl, file, certificate);
+            vouch(ssl, file, certificate);
             break;
         default:
             // Error action should be set

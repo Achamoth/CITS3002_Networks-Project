@@ -344,6 +344,8 @@ public class Server {
         
         //We've found file and certificate, so now vouch for file with certificate
         f.vouch(certName);
+        
+        //TODO: Might want to send success code back to client. I'll leave it for now.
     }
     
     //Finds specified file inside 'files' arraylist
