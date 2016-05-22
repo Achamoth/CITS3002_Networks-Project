@@ -81,6 +81,21 @@ static int readResponse(SSL *ssl) {
     return ntohl(receivedInt);
 }
 
+void handleAcknowledgement(int response){
+    //  Confirm response is a positive acknowledgment
+    if(response != ACKNOWLEDGMENT){
+        fprintf(stderr, "%s Error: Acknowledgment not received.\n",
+            programName);
+        fprintf(stderr, "%s: Error: Acknowledgment not received.\n Response " 
+            "fromOldTrusty Server: %d\n", programName, response);
+        closeConnection();
+        exit(EXIT_FAILURE);
+    }
+    else{
+        fprintf(stdout, "%s: Server acknowledgement recieved.\n", programName);
+    }
+}
+
 /*
     sendFile
 
@@ -96,21 +111,8 @@ static void sendFile(SSL *ssl, char *fileName){
     sendFileString(fileName, ssl);
     
     //  Wait for server response    
-    int response = readResponse(ssl);
-    //  Confirm response is a positive acknowledgment
-    if(response != ACKNOWLEDGMENT){
-        fprintf(stderr, "%s Error: Acknowledgment not received.\n",
-            programName);
-        fprintf(stderr, "%s: Error: Acknowledgment not received.\n Response " 
-            "fromOldTrusty Server: %d\n", programName, response);
-        closeConnection();
-        exit(EXIT_FAILURE);
-    }
-    else{
-        fprintf(stdout, "%s: Server acknowledgement recieved.\n"
-            "\tSending file...\n",
-            programName);
-    }
+    handleAcknowledgement(readResponse(ssl));
+    fprintf(stdout, "Sending file...\n", programName);    
     
     //  Create file pointer
     FILE *fp = fopen(fileName, "rb");
@@ -216,12 +218,8 @@ void getFile(SSL *ssl, char *fileName, int security) {
         closeConnection();
         exit(EXIT_FAILURE);
     }
-    //  Check reason for closure
-    if(bytes == SSL_ERROR_ZERO_RETURN){
-        fprintf(stdout, "%s: File Download Complete.", programName); 
-    }
     else{
-        SSL_get_error(ssl, bytes); 
+        fprintf(stdout, "%s: File Download Complete.", programName);
     }
     //Free all memory and close resources
     fclose(fp);
@@ -266,6 +264,25 @@ void vouch(SSL *ssl, char *file, char *certificate) {
     }
     
     //TODO: Might want to add some stuff here later. I'll leave it for now
+}
+
+/*
+    listServerFiles
+
+    Fetches list of files on server and security rating, outputs to STDOUT
+    Assume list of files is less than 1 mb.
+    
+    @param  ssl     SSL session
+*/
+void listServerFiles(SSL *ssl){
+    //  Wait for server response on server listing
+    handleAcknowledgement(readResponse(ssl));
+    fprintf(stdout, "Receiving List...\n", programName);
+
+    //  Wait for server to send file, and read it 1024 bytes at a time
+    unsigned char buffer[1024];
+    SSL_read(ssl, buffer, sizeof(buffer));
+    fprintf(stdout, "%s\n\n", buffer);
 }
 
 
@@ -334,7 +351,8 @@ void parseRequest(char *host, char *port, actionType action, char *file,
             vouch(ssl, file, certificate);
             break;
         case LIST:
-
+            sendAction(ssl, LIST);
+            listServerFiles();
             break;
         default:
             // Error action should be set
