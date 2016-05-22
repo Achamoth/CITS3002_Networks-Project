@@ -195,7 +195,7 @@ public class Server {
 	}
     
     //Takes socket as parameter and saves file to disk
-    public static void saveFile(Socket s, boolean isCert) throws Exception {
+    public static void saveFile(Socket s) throws Exception {
         InputStream inStream = s.getInputStream();
         OutputStream outStream = s.getOutputStream();
         FileOutputStream fos = null;
@@ -206,9 +206,7 @@ public class Server {
         
         //Create file in correct directory
         String curPath = System.getProperty("user.dir");
-        String filePath;
-        if(!isCert) filePath = curPath + "/Files/";
-        else filePath = curPath + "/Certificates/";
+        String filePath = curPath + "/Files/";
         fos = new FileOutputStream(filePath + filename);
         
         //Send ack back to client
@@ -226,11 +224,9 @@ public class Server {
             }
         }
         
-        //Record file in server's file list if it's a regular file
-        if(!isCert) {
-            ServerFile file = new ServerFile(filename);
-            files.add(file);
-        }
+        //Record file in server's file list
+        ServerFile file = new ServerFile(filename);
+        files.add(file);
         
         //Close relevant resources
         fos.close();
@@ -505,7 +501,7 @@ class ThreadedHandler implements Runnable {
             case UPLOAD :
                 //Client wants to send file (not a certificate)
                 try {
-                    Server.saveFile(incoming, false);
+                    Server.saveFile(incoming);
                 } catch(Exception e) {
                     e.printStackTrace();
                 }
