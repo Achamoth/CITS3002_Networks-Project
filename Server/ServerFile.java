@@ -9,13 +9,14 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Set;
 import java.security.cert.X509Certificate;
+import java.security.PublicKey;
 import javax.security.auth.x500.X500Principal;
 import org.bouncycastle.util.io.pem.PemReader;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.jgrapht.graph.DirectedMultigraph;
+import org.jgrapht.graph.DirectedPseudograph;
 import org.jgrapht.graph.DefaultEdge;
 
 public class ServerFile {
@@ -44,7 +45,7 @@ public class ServerFile {
     //TODO: Note, if minCircleSize is 1, we'll just have to check for self-signed certificates manually without using the graph, since the graph doesn't allow for loops
     public boolean meetsRequirements(int minCircleSize, String requiredMember) {
         //Need to start by initializing graph with vouchers
-        DirectedMultigraph<String, DefaultEdge> circle = null;
+        DirectedPseudograph<String, DefaultEdge> circle = null;
         try {
             circle = initGraph();
         } catch (Exception e) {
@@ -76,9 +77,9 @@ public class ServerFile {
     }
     
     //Uses 'certificates' array list to initialize and return graph structure that contains vouchers and their trust amongst each other
-    private DirectedMultigraph<String, DefaultEdge> initGraph() throws Exception{
-        //Initialize empty graph
-        DirectedMultigraph<String, DefaultEdge> result = new DirectedMultigraph<String, DefaultEdge> (DefaultEdge.class);
+    private DirectedPseudograph<String, DefaultEdge> initGraph() throws Exception{
+        //Initialize directed pseudograph that allows multiple edges and loops
+        DirectedPseudograph<String, DefaultEdge> result = new DirectedPseudograph<String, DefaultEdge> (DefaultEdge.class);
         
         //Set up path to certificates
         String certPath = System.getProperty("user.dir") + "/Certificates/";
@@ -137,7 +138,7 @@ public class ServerFile {
             X500Principal signer = cert.getIssuerX500Principal();
             
             //Now, get name of signer
-            String certSigner = signer.getname();
+            String certSigner = signer.getName();
             
             //Now, check if signer is also in graph (i.e. they've also vouched for file)
             boolean signerAlsoVouched = result.containsVertex(certSigner);
@@ -146,17 +147,16 @@ public class ServerFile {
             if(!signerAlsoVouched) continue;
             
             //If signer is in graph, verify signature
-            //TODO: This
+            verifySignature(certSigner, cert);
             
             //And now add directed edge from certificate signer to certificate owner
             result.addEdge(certSigner, certOwner);
-
         }
         return result;
     }
     
     //Given a graph of certificate owners, and a requiredMember (for a circle of trust), find and return the node that represents the requiredMember
-    private String findVertice(String requiredMember, DirectedMultigraph<String, DefaultEdge> circle) {
+    private String findVertice(String requiredMember, DirectedPseudograph<String, DefaultEdge> circle) {
         String certOwner = null;
         Set<String> vertices = circle.vertexSet();
         
@@ -175,5 +175,30 @@ public class ServerFile {
             }
         }
         return certOwner;
+    }
+    
+    //Given the name of a certificage signer, and the X509Certificate object they signed, verify their signature
+    private void verifySignature(String certSigner, X509Certificate cert) throws Exception {
+        //Work out common name of signer
+        String tokens[] = certSigner.split(",");
+        String commonName = tokens[0].substring(3);
+        
+        //Next, retrieve X509Certificate object for signer's certificate
+        byte[] certBytes = Server.fileToBytes("Certificates/" + commonName + ".crt");
+        PemReader reader;
+        PEMParser parser;
+        
+        reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(certBytes)));
+        parser = new PEMParser(reader);
+        X509CertificateHolder certHolder = (X509CertificateHolder) parser.readObject();
+        
+        JcaX509CertificateConverter certCoverter = new JcaX509CertificateConverter();
+        X509Certificate signerCert = certCoverter.setProvider("BC").getCertificate(certHolder);
+        
+        //Now, retrieve signer's public key from signerCert
+        PublicKey signerKey = signerCert.getPublicKey();
+        
+        //Now, verify signature on cert using public key (throws exception if verification fails)
+        cert.verify(signerKey);
     }
 }

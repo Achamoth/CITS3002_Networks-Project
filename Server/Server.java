@@ -15,6 +15,7 @@ import java.security.cert.X509Certificate;
 import java.security.cert.Certificate;
 import java.security.PrivateKey;
 import java.security.Security;
+import javax.security.auth.x500.X500Principal;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
@@ -194,7 +195,7 @@ public class Server {
 	}
     
     //Takes socket as parameter and saves file to disk
-    public static void saveFile(Socket s, boolean isCert) throws Exception {
+    public static void saveFile(Socket s) throws Exception {
         InputStream inStream = s.getInputStream();
         OutputStream outStream = s.getOutputStream();
         FileOutputStream fos = null;
@@ -205,9 +206,7 @@ public class Server {
         
         //Create file in correct directory
         String curPath = System.getProperty("user.dir");
-        String filePath;
-        if(!isCert) filePath = curPath + "/Files/";
-        else filePath = curPath + "/Certificates/";
+        String filePath = curPath + "/Files/";
         fos = new FileOutputStream(filePath + filename);
         
         //Send ack back to client
@@ -225,17 +224,115 @@ public class Server {
             }
         }
         
-        //Record file in server's file list if it's a regular file
-        if(!isCert) {
-            ServerFile file = new ServerFile(filename);
-            files.add(file);
-        }
+        //Record file in server's file list
+        ServerFile file = new ServerFile(filename);
+        files.add(file);
         
         //Close relevant resources
         fos.close();
         in.close();
         outStream.close();
         inStream.close();
+    }
+    
+    //Takes socket as parameter and saves certificate to disk
+    public static void saveCertificate(Socket s) throws Exception {
+        InputStream inStream = s.getInputStream();
+        OutputStream outStream = s.getOutputStream();
+        FileOutputStream fos = null;
+        
+        //Read filename
+        BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
+        in.readLine().trim();
+        
+        //Create temp certificate in correct directory
+        String curPath = System.getProperty("user.dir");
+        String filePath = curPath + "/Certificates/";
+        fos = new FileOutputStream(filePath + "temp.crt");
+        
+        //Send ack back to client
+        DataOutputStream dos = new DataOutputStream(outStream);
+        dos.writeInt(ACKNOWLEDGMENT);
+        
+        //Read file till all bytes are finished
+        while (true) {
+            try{
+                int b = inStream.read();
+                if(b == -1) break;
+                fos.write(b);
+            } catch(Exception e) {
+                e.printStackTrace();
+            }
+        }
+        
+        //Close file output stream
+        fos.close();
+        
+        //Now, determine common name on certificate
+        String commonName = getCommonName();
+        
+        //Create new file with commonName as filename, and copy contents on "temp.crt" into it
+        File dest = new File("Certificates/" + commonName + ".crt");
+        File source = new File(filePath + "temp.crt");
+        copyFileUsingFileStreams(source, dest);
+        
+        //Now delete "temp.crt"
+        source.delete();
+        
+        //Close relevant resources
+        in.close();
+        outStream.close();
+        inStream.close();
+    }
+    
+    //Copy one file into another https://examples.javacodegeeks.com/core-java/io/file/4-ways-to-copy-file-in-java/
+    private static void copyFileUsingFileStreams(File source, File dest)
+    throws IOException {
+        InputStream input = null;
+        OutputStream output = null;
+        try {
+            input = new FileInputStream(source);
+            output = new FileOutputStream(dest);
+            byte[] buf = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = input.read(buf)) > 0) {
+                output.write(buf, 0, bytesRead);
+            }
+        } finally {
+            input.close();
+            output.close();
+        }
+    }
+    
+    //Looks at "temp.crt" in certificates folder and determines the common name of the certificate's owner
+    private static String getCommonName() throws Exception {
+        //Determine filePath
+        String filePath = System.getProperty("user.dir") + "/Certificates/temp.crt";
+        
+        //Open certificate
+        byte[] certBytes = fileToBytes(filePath);
+        
+        PemReader reader;
+        PEMParser parser;
+        
+        //Use reader to create X509CertificateHolder object from corresponding byte array
+        reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(certBytes)));
+        parser = new PEMParser(reader);
+        X509CertificateHolder certHolder = (X509CertificateHolder)parser.readObject();
+        
+        //Now convert X509CertificateHolder to X509Certificate
+        JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
+        X509Certificate cert = certConverter.setProvider("BC").getCertificate(certHolder);
+
+        //Now, get name on certificate
+        X500Principal owner = cert.getSubjectX500Principal();
+        String name = owner.getName();
+        
+        //Now, retrieve common name
+        String[] tokens = name.split(",");
+        String result = tokens[0].substring(3);
+        
+        return result;
     }
     
     //Takes socket as parameter and sends requested file through it
@@ -298,6 +395,7 @@ public class Server {
         throw new Exception(message);
     }
     
+    //Determine if file is trustworthy with respect to given parameters
     private static boolean checkTrust(String filename, int minCircleSize) {
         //Activate below code when I develop ServerFile further
         /*ServerFile f = findFile(filename);
@@ -403,7 +501,7 @@ class ThreadedHandler implements Runnable {
             case UPLOAD :
                 //Client wants to send file (not a certificate)
                 try {
-                    Server.saveFile(incoming, false);
+                    Server.saveFile(incoming);
                 } catch(Exception e) {
                     e.printStackTrace();
                 }
@@ -419,7 +517,7 @@ class ThreadedHandler implements Runnable {
             case UPLOAD_CERT:
                 //Client wants to send certificate
                 try {
-                    Server.saveFile(incoming, true);
+                    Server.saveCertificate(incoming);
                 } catch(Exception e) {
                     e.printStackTrace();
                 }
