@@ -9,7 +9,7 @@ SOURCES = $(wildcard *.java)
 CLASS = $(wildcard *.class)
 
 JC = javac
-LIBS = lib/jgrapht-core-0.9.1.jar:lib/bcprov-jdk15on-154.jar:lib/bcpkix-jdk15on-154.jar:.
+LIBS = lib/jgrapht-core-0.9.1.jar:lib/bcprov-jdk15on-154.jar:lib/bcpkix-jdk15on-154.jar:lib/gs-core-1.3.jar:.
 JFLAGS = -cp
 
 $(PROJECT) : $(CLASS)
