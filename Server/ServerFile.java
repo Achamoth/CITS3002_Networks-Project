@@ -16,7 +16,7 @@ import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.jgrapht.graph.DirectedMultigraph;
+import org.jgrapht.graph.DirectedPseudograph;
 import org.jgrapht.graph.DefaultEdge;
 
 public class ServerFile {
@@ -45,7 +45,7 @@ public class ServerFile {
     //TODO: Note, if minCircleSize is 1, we'll just have to check for self-signed certificates manually without using the graph, since the graph doesn't allow for loops
     public boolean meetsRequirements(int minCircleSize, String requiredMember) {
         //Need to start by initializing graph with vouchers
-        DirectedMultigraph<String, DefaultEdge> circle = null;
+        DirectedPseudograph<String, DefaultEdge> circle = null;
         try {
             circle = initGraph();
         } catch (Exception e) {
@@ -77,9 +77,9 @@ public class ServerFile {
     }
     
     //Uses 'certificates' array list to initialize and return graph structure that contains vouchers and their trust amongst each other
-    private DirectedMultigraph<String, DefaultEdge> initGraph() throws Exception{
-        //Initialize empty graph
-        DirectedMultigraph<String, DefaultEdge> result = new DirectedMultigraph<String, DefaultEdge> (DefaultEdge.class);
+    private DirectedPseudograph<String, DefaultEdge> initGraph() throws Exception{
+        //Initialize directed pseudograph that allows multiple edges and loops
+        DirectedPseudograph<String, DefaultEdge> result = new DirectedPseudograph<String, DefaultEdge> (DefaultEdge.class);
         
         //Set up path to certificates
         String certPath = System.getProperty("user.dir") + "/Certificates/";
@@ -156,7 +156,7 @@ public class ServerFile {
     }
     
     //Given a graph of certificate owners, and a requiredMember (for a circle of trust), find and return the node that represents the requiredMember
-    private String findVertice(String requiredMember, DirectedMultigraph<String, DefaultEdge> circle) {
+    private String findVertice(String requiredMember, DirectedPseudograph<String, DefaultEdge> circle) {
         String certOwner = null;
         Set<String> vertices = circle.vertexSet();
         
