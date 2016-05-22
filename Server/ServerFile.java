@@ -137,7 +137,7 @@ public class ServerFile {
             X500Principal signer = cert.getIssuerX500Principal();
             
             //Now, get name of signer
-            String certSigner = signer.getname();
+            String certSigner = signer.getName();
             
             //Now, check if signer is also in graph (i.e. they've also vouched for file)
             boolean signerAlsoVouched = result.containsVertex(certSigner);
