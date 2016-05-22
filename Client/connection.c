@@ -38,7 +38,7 @@ static int openTCPConnection(const char *host, const char *port){
 
     // Error check on getaddrinfo
     if((addrInfo_Error = getaddrinfo(host, port, &hostReq, &hostFound)) != 0){
-        fprintf(stderr, "%s: Get Address Error: %s\n", programName, 
+        fprintf(stderr, "%s Error: Unable to get address: %s\n", programName, 
             gai_strerror(addrInfo_Error));
         usage();
     }
@@ -94,7 +94,7 @@ static SSL_CTX *makeSSLContext(){
     //  Create SSL context - client in this case using SSLv3
     sslContext = SSL_CTX_new(SSLv3_client_method());
     if(sslContext == NULL){
-        fprintf(stderr, "\n%s: SSL: Failed to create new context.\n", 
+        fprintf(stderr, "\n%s Error: Failed to create new SSL context.\n", 
             programName);
         exit(EXIT_FAILURE);
     }
@@ -127,8 +127,8 @@ static SSL_CTX *makeSSLContext(){
 
     //  Check public - private key pair integrity
     if(!SSL_CTX_check_private_key(sslContext)){
-        fprintf(stderr, "%s: SSL: Client Private key does not match client" 
-            "certificate public key.\n", programName);
+        fprintf(stderr, "%s Error: SSL: Client Private key does not match "
+            "client certificate public key.\n", programName);
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
@@ -150,7 +150,7 @@ static SSL_CTX *makeSSLContext(){
 static void checkCert(SSL *session){
     X509 *serverCertificate = SSL_get_peer_certificate(session);
     if(serverCertificate == NULL){
-        fprintf(stderr, "%s: No public certificate provided by server, "
+        fprintf(stderr, "%s Error: No public certificate provided by server, "
             "disconnecting.", programName);
         exit(EXIT_FAILURE);
     }
@@ -188,7 +188,7 @@ SSL *secureConnection(const char* host, const char* port){
     // Create SSL session / handle
     ssl = SSL_new(sslContext);
     if(ssl == NULL){
-        fprintf(stderr, "%s: SSL: Failed to create new session.\n", 
+        fprintf(stderr, "%s Error: SSL: Failed to create new session.\n", 
             programName);
         exit(EXIT_FAILURE);
     }

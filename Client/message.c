@@ -287,7 +287,7 @@ void parseRequest(char *host, char *port, actionType action, char *file,
         char *certificate, int minCircle, char *member, bool memberRequested){
     //  Require host and port
     if(host == NULL || port == NULL){
-        fprintf(stderr, "%s: Host and port required.\n", programName);
+        fprintf(stderr, "%s Error: Host and port required.\n", programName);
         usage();
     }
     //Establish connection with server
@@ -298,7 +298,7 @@ void parseRequest(char *host, char *port, actionType action, char *file,
         case PUSH:{
             //  Check for file presence
             if(file == NULL){
-                fprintf(stderr, "%s: File to upload not found.\n", programName);
+                fprintf(stderr, "%s Error: File to upload not found.\n", programName);
                 usage();
             }
             sendAction(ssl, PUSH);
@@ -313,7 +313,7 @@ void parseRequest(char *host, char *port, actionType action, char *file,
         case PUSH_CERT:
             //Upload certificate to server
             if(certificate == NULL) {
-                fprintf(stderr, "%s: Certificate to upload not found.\n", 
+                fprintf(stderr, "%s Error: Certificate to upload not found.\n", 
                     programName);
                 usage();
             }
@@ -323,19 +323,22 @@ void parseRequest(char *host, char *port, actionType action, char *file,
         case VOUCH:
             //Vouch for specified file with specified certificate
             if(file == NULL) {
-                fprintf(stderr, "%s: File to vouch for not found.\n", programName);
+                fprintf(stderr, "%s Error: File to vouch for not found.\n", programName);
                 usage();
             }
-            else if(certificate == NULL) {
-                fprintf(stderr, "%s: Certificate to vouch with not found.\n", programName);
+            if(certificate == NULL) {
+                fprintf(stderr, "%s Error: Certificate to vouch with not found.\n", programName);
                 usage();
             }
             sendAction(ssl, VOUCH);
             vouch(ssl, file, certificate);
             break;
+        case LIST:
+
+            break;
         default:
             // Error action should be set
-            fprintf(stderr, "%s: Action not set while parsing user request\n",
+            fprintf(stderr, "%s Error: Action not set while parsing user request\n",
                 programName);
             exit(EXIT_FAILURE);
     }
