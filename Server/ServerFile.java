@@ -9,6 +9,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Set;
 import java.security.cert.X509Certificate;
+import java.security.PublicKey;
 import javax.security.auth.x500.X500Principal;
 import org.bouncycastle.util.io.pem.PemReader;
 import org.bouncycastle.openssl.PEMParser;
@@ -146,11 +147,10 @@ public class ServerFile {
             if(!signerAlsoVouched) continue;
             
             //If signer is in graph, verify signature
-            //TODO: This
+            verifySignature(certSigner, cert);
             
             //And now add directed edge from certificate signer to certificate owner
             result.addEdge(certSigner, certOwner);
-
         }
         return result;
     }
@@ -175,5 +175,30 @@ public class ServerFile {
             }
         }
         return certOwner;
+    }
+    
+    //Given the name of a certificage signer, and the X509Certificate object they signed, verify their signature
+    private void verifySignature(String certSigner, X509Certificate cert) throws Exception {
+        //Work out common name of signer
+        String tokens[] = certSigner.split(",");
+        String commonName = tokens[0].substring(3);
+        
+        //Next, retrieve X509Certificate object for signer's certificate
+        byte[] certBytes = Server.fileToBytes("Certificates/" + commonName + ".crt");
+        PemReader reader;
+        PEMParser parser;
+        
+        reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(certBytes)));
+        parser = new PEMParser(reader);
+        X509CertificateHolder certHolder = (X509CertificateHolder) parser.readObject();
+        
+        JcaX509CertificateConverter certCoverter = new JcaX509CertificateConverter();
+        X509Certificate signerCert = certCoverter.setProvider("BC").getCertificate(certHolder);
+        
+        //Now, retrieve signer's public key from signerCert
+        PublicKey signerKey = signerCert.getPublicKey();
+        
+        //Now, verify signature on cert using public key (throws exception if verification fails)
+        cert.verify(signerKey);
     }
 }
