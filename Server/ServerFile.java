@@ -111,9 +111,46 @@ public class ServerFile {
             result.addVertex(certOwner);
         }
         
-        //Second loop to add edges and validate signatures (that's the hard part :( )
+        //Second loop to add edges and validate signatures
         for(String curCert : certificates) {
-            //Examine current certificate, and add a directed edge from signer (if they're in the graph) to owner
+            /* Examine current certificate, and add a directed edge from signer (if they're in the graph) to owner */
+            
+            //First, construct X509Certificate object
+            byte[] certBytes = Server.fileToBytes(certPath + curCert);
+            PemReader reader;
+            PEMParser parser;
+            
+            reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(certBytes)));
+            parser = new PEMParser(reader);
+            X509CertificateHolder certHolder = (X509CertificateHolder) parser.readObject();
+            
+            JcaX509CertificateConverter certCoverter = new JcaX509CertificateConverter();
+            X509Certificate cert = certCoverter.setProvider("BC").getCertificate(certHolder);
+            
+            //Next, get X500Principal object from certificate
+            X500Principal subject = cert.getSubjectX500Principal();
+            
+            //Now, get name of subject (certificate owner)
+            String certOwner = subject.getName();
+            
+            //Now, get X500Principal object from certificate (for signer)
+            X500Principal signer = cert.getIssuerX500Principal();
+            
+            //Now, get name of signer
+            String certSigner = signer.getname();
+            
+            //Now, check if signer is also in graph (i.e. they've also vouched for file)
+            boolean signerAlsoVouched = result.containsVertex(certSigner);
+            
+            //If signer isn't in graph, move onto next certificate
+            if(!signerAlsoVouched) continue;
+            
+            //If signer is in graph, verify signature
+            //TODO: This
+            
+            //And now add directed edge from certificate signer to certificate owner
+            result.addEdge(certSigner, certOwner);
+
         }
         return result;
     }
