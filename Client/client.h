@@ -29,6 +29,8 @@
 #define ACKNOWLEDGMENT 10
 #define FILE_NOT_FOUND 15
 #define FILE_FOUND 16
+#define MEMBER_REQUIRED 17
+#define MEMBER_NOT_REQUIRED 18
 /*#define PUSH 1
 #define PULL 2
 #define PUSH_CERT 3

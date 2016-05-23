@@ -6,6 +6,21 @@
 */
 #include "client.h"
 
+//Sends int so it can be read by Java's readInt() method
+//http://stackoverflow.com/questions/3784263/converting-an-int-into-a-4-byte-char-array-c
+static int sendInt(SSL *ssl, int n) {
+    //Convert int to byte array
+    unsigned char bytes[4];
+    
+    bytes[0] = (n >> 24) & 0xFF;
+    bytes[1] = (n >> 16) & 0xFF;
+    bytes[2] = (n >> 8) & 0xFF;
+    bytes[3] = n & 0xFF;
+    
+    //Send byte array
+    return SSL_write(ssl, bytes, sizeof(char) * 4);
+}
+
 /*
     sendAction
     
@@ -15,7 +30,7 @@
     @param action   Type of message
 */
 static void sendAction(SSL *ssl, actionType action){
-    if(SSL_write(ssl, &action, sizeof(int)) < 0){
+    if(sendInt(ssl, action) < 0){
         fprintf(stderr, "%s: Sending action type unsuccessful.\n", programName);
         closeConnection();
         exit(EXIT_FAILURE);
@@ -43,12 +58,12 @@ static void sendFileString(char *fileName, SSL *ssl){
     serverFormattedName[strlen(serverFormattedName)] = '\n';
     if(SSL_write(ssl, serverFormattedName, 
         sizeof(char)*strlen(serverFormattedName)) < 0){
-        fprintf(stderr, "%s: Sending filename unsuccessful.\n", programName);
+        fprintf(stderr, "%s: Sending filename/membername unsuccessful.\n", programName);
         closeConnection();
         exit(EXIT_FAILURE);
     }
     else{
-        fprintf(stdout, "%s: Filename sent successfully.\n", programName);
+        fprintf(stdout, "%s: Filename/Membername sent successfully.\n", programName);
     }
 }
 
@@ -148,12 +163,26 @@ static void sendFile(SSL *ssl, char *fileName){
 
 //Request that server send file (indicated by filename)
 //  Place in STDOUT, don't need to save
-void getFile(SSL *ssl, char *fileName, int security) {
+void getFile(SSL *ssl, char *fileName, int security, char* member) {
     // need to send security length
-    if(SSL_write(ssl, &security, sizeof(int)) < 0) {
+    if(sendInt(ssl, security) < 0) {
         fprintf(stderr, "%s: Sending required circle size unsuccessful.\n", programName);
         closeConnection();
         exit(EXIT_FAILURE);
+    }
+    
+    //  Tell server whether or not there is a required member
+    if(member == NULL) {
+        //No member required.
+        int toServer = MEMBER_NOT_REQUIRED;
+        sendInt(ssl, toServer);
+    }
+    else {
+        //Member required
+        int toServer = MEMBER_REQUIRED;
+        sendInt(ssl, toServer);
+        //Now send name of required member
+        sendFileString(member, ssl);
     }
     
     //  Send the name of file required
@@ -308,7 +337,7 @@ void parseRequest(char *host, char *port, actionType action, char *file,
         case PULL:
             //Download file from server
             sendAction(ssl, PULL);
-            getFile(ssl, file, minCircle);
+            getFile(ssl, file, minCircle, member);
             break;
         case PUSH_CERT:
             //Upload certificate to server

@@ -22,7 +22,7 @@ void usage(void){
 		"  -f [filename]\t\t\tFetch an existing file from the oldtrusty server.\n"
 		"  -h [hostname:port]\t\tProvide the remote address hosting the oldtrusty server.\n"
 		"  -l \t\t\t\tList all stored files and how they are protected.\n"
-		"  -n [member_name]\t\tAdd a new member to the circle of trust with \"member_name\".\n"
+		"  -n [member_name]\t\tSpecify a member you wish to be in the circle of trust with \"member_name\".\n"
 		"  -u [filename]\t\t\tUpload a certificate to the oldtrusty server.\n"
 		"  -v [filename] [certificate]\tVouch for the authenticity of an existing file on the\n"
 		"\t\t\t\toldtrusty server using the provided named certificate.\n\n", programName);

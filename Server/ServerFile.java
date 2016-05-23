@@ -8,6 +8,7 @@
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Set;
+import java.util.List;
 import java.security.cert.X509Certificate;
 import java.security.PublicKey;
 import javax.security.auth.x500.X500Principal;
@@ -18,6 +19,7 @@ import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.jgrapht.graph.DirectedPseudograph;
 import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.alg.cycle.JohnsonSimpleCycles;
 
 public class ServerFile {
     
@@ -42,7 +44,6 @@ public class ServerFile {
     }
     
     //Calculates a circle of trust, and checks that the circle satisfies given requirements. Returns true or false
-    //TODO: Note, if minCircleSize is 1, we'll just have to check for self-signed certificates manually without using the graph, since the graph doesn't allow for loops
     public boolean meetsRequirements(int minCircleSize, String requiredMember) {
         //Need to start by initializing graph with vouchers
         DirectedPseudograph<String, DefaultEdge> circle = null;
@@ -58,7 +59,24 @@ public class ServerFile {
         
         if(!reqMember) {
             /* No member required. Simply find the first circle that satisfies minCircleSize */
+            
             //Find all directed cycles contained within 'circle'
+            JohnsonSimpleCycles<String, DefaultEdge> cycleFinder = new JohnsonSimpleCycles<String, DefaultEdge>(circle);
+            List<List<String>> circlesOfTrust = cycleFinder.findSimpleCycles();
+            
+            //Now find largest cycle
+            int largestCircleSize = 0;
+            List<String> largestCircle = null;
+            for(List<String> curCircle : circlesOfTrust) {
+                int curCircleSize = curCircle.size();
+                if(largestCircleSize < curCircleSize) {
+                    largestCircleSize = curCircleSize;
+                    largestCircle = curCircle;
+                }
+            }
+            
+            //Now, compare size of largest circle to the specified required size
+            return largestCircleSize >= minCircleSize;
         }
         
         else {
@@ -70,10 +88,28 @@ public class ServerFile {
             //If certOwner is still null, then they haven't vouched for the file. Immediately return false
             if(certOwner == null) return false;
             
-            //Now, we've found our required start node. Find all directed cycles from this node
-            //TODO: Find all directed cycles from certOwner
+            //Find all directed cycles contained within 'circle'
+            JohnsonSimpleCycles<String, DefaultEdge> cycleFinder = new JohnsonSimpleCycles<String, DefaultEdge>(circle);
+            List<List<String>> circlesOfTrust = cycleFinder.findSimpleCycles();
+            
+            //Now find largest circle that includes the required member
+            int largestCircleSize = 0;
+            List<String> largestCircle = null;
+            for(List<String> curCircle : circlesOfTrust) {
+                //Check if current cycle contains the required member
+                if(curCircle.contains(certOwner)) {
+                    //If it does, compare to currently recorded largest circle
+                    int curCircleSize = curCircle.size();
+                    if(largestCircleSize < curCircleSize) {
+                        largestCircleSize = curCircleSize;
+                        largestCircle = curCircle;
+                    }
+                }
+            }
+            
+            //Now, compare size of largest circle to the specified required size
+            return largestCircleSize >= minCircleSize;
         }
-        return true; //For now
     }
     
     //Uses 'certificates' array list to initialize and return graph structure that contains vouchers and their trust amongst each other

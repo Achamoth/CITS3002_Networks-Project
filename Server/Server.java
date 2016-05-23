@@ -44,6 +44,8 @@ public class Server {
     private static final int FILE_UNTRUSTWORTHY = 9;
     private static final int FILE_NOT_FOUND = 15;
     private static final int FILE_FOUND = 16;
+    private static final int MEMBER_REQUIRED = 17;
+    private static final int MEMBER_NOT_REQUIRED = 18;
     
     private static ArrayList<ServerFile> files;
     
@@ -304,7 +306,10 @@ public class Server {
         }
     }
     
-    //Looks at "temp.crt" in certificates folder and determines the common name of the certificate's owner
+    /* 
+     * Looks at "temp.crt" in certificates folder and determines the common name of the certificate's owner
+     * For use with saveCertificate() method
+     */
     private static String getCommonName() throws Exception {
         //Determine filePath
         String filePath = System.getProperty("user.dir") + "/Certificates/temp.crt";
@@ -339,14 +344,28 @@ public class Server {
     public static void sendFile(Socket s) throws Exception {
         InputStream inStream = s.getInputStream();
         OutputStream outStream = s.getOutputStream();
+        BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
+        DataInputStream din = new DataInputStream(inStream);
         DataOutputStream dos = new DataOutputStream(outStream);
         FileInputStream fis = null;
         
         //Read required circle size
-        int minCircleSize = inStream.read();
+        int minCircleSize = din.readInt();
+        
+        //Check if there is a required member (for the circle of trust)
+        int memberRequired = din.readInt();
+        String requiredMember = null;
+        
+        //If there is, client will send name of required member
+        if(memberRequired == MEMBER_REQUIRED) {
+            //Read name of required member
+            requiredMember = in.readLine().trim();
+        }
+        if(memberRequired != MEMBER_NOT_REQUIRED) {
+            //An error must have occurred....do something
+        }
         
         //Read filename
-        BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
         String filename = in.readLine().trim();
         
         //Find file
@@ -355,7 +374,7 @@ public class Server {
         File f = new File(filePath + filename);
         
         //Make sure file exists
-        boolean fileExists = f.exists() && !f.isDirectory();
+        boolean fileExists = f.exists() && !f.isDirectory() && (findFile(filename) != null);
         if(!fileExists) {
             //If it doesn't, tell client file doesn't exist
             dos.writeInt(FILE_NOT_FOUND);
@@ -364,7 +383,7 @@ public class Server {
         dos.writeInt(FILE_FOUND);
         
         //Check that file satisfies client's trust requirements
-        boolean trustworthy = checkTrust(filename, minCircleSize);
+        boolean trustworthy = checkTrust(filename, minCircleSize, requiredMember);
         if(!trustworthy) {
             dos.writeInt(FILE_UNTRUSTWORTHY);
             return ;
@@ -396,18 +415,9 @@ public class Server {
     }
     
     //Determine if file is trustworthy with respect to given parameters
-    private static boolean checkTrust(String filename, int minCircleSize) {
-        //Activate below code when I develop ServerFile further
-        /*ServerFile f = findFile(filename);
-         if(f == null) {
-         //Oh oh. This should never really happen
-         }*/
-        
-        //TODO: Check circle size on file against client specifications
-        //TODO: Check if any circle contain required member (if client has specified one)
+    private static boolean checkTrust(String filename, int minCircleSize, String requiredMember) {
         ServerFile f = findFile(filename);
-        f.meetsRequirements(0, null);
-        return true; //For now
+        return f.meetsRequirements(minCircleSize, requiredMember);
     }
     
     //Service client request to vouch for file
@@ -491,8 +501,10 @@ class ThreadedHandler implements Runnable {
         
         //Read byte of data off inStream (from client) and decode it to determine what client wants
         int b = 0;
+        DataInputStream din = null;;
         try {
-            b = inStream.read();
+            din = new DataInputStream(inStream);
+            b = din.readInt();
         } catch(Exception e) {
             e.printStackTrace();
         }
@@ -535,6 +547,7 @@ class ThreadedHandler implements Runnable {
         //Close connection
         try {
             incoming.close();
+            din.close();
         } catch(IOException e) {
             e.printStackTrace();
         }
