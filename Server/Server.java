@@ -483,58 +483,58 @@ public class Server {
         }
         dos.writeInt(FILE_FOUND);
         
-//        try {
-//            /* Now, verify that client owns certificate by sending them a challenge */
-//            
-//            //Generate a random challenge number
-//            int challenge = (int) Math.random() * 10000 + 1;
-//            
-//            /* Encrypt challenge number with public key on specified certificate */
-//            byte[] certBytes = fileToBytes(certPath);
-//            PemReader reader;
-//            PEMParser parser;
-//            //Use reader to create X509CertificateHolder object from corresponding byte array
-//            reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(certBytes)));
-//            parser = new PEMParser(reader);
-//            X509CertificateHolder certHolder = (X509CertificateHolder)parser.readObject();
-//            //Now convert X509CertificateHolder to X509Certificate
-//            JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
-//            X509Certificate cert = certConverter.setProvider("BC").getCertificate(certHolder);
-//            //Extract public ket from X509Certificate
-//            PublicKey key = cert.getPublicKey();
-//            //Encrypt challenge number using public key
-//            byte[] plainText = BigInteger.valueOf(challenge).toByteArray();
-//            byte[] cipherText = Challenge.encrypt(key, plainText);
-//            
-//            //Send encrypted challenge number to client
-//            outStream.write(cipherText);
-//            
-//            //Receive encrypted, incremented challenge number from client
-//            //ERROR: NOT SURE HOW MANY BYTES TO READ HERE
-//            byte[] modifiedCipher = new byte[128];
-//            inStream.read(modifiedCipher);
-//            
-//            //Decrypt received data with client's public key, and compare to challenge number
-//            byte[] modifiedPlain = Challenge.decrypt(key, modifiedCipher);
-//            int modChallenge = byteArrayToInt(modifiedPlain);
-//            boolean pass = (modChallenge == challenge + 1);
-//            
-//            //Tell client whether they passed or failed
-//            if(pass) {
-//                //Tell client they passed
-//                dos.writeInt(PASS_CHALLENGE);
-//            }
-//            else {
-//                //Tell client they failed. Return
-//                dos.writeInt(FAIL_CHALLENGE);
-//                return;
-//            }
-//        } catch(Exception e) {
-//            //Send error message to client; encryption/decrytpion failed
-//            dos.writeInt(CRYPTO_FAIL);
-//            e.printStackTrace();
-//            return ;
-//        }
+        try {
+            /* Now, verify that client owns certificate by sending them a challenge */
+            
+            //Generate a random challenge number
+            int challenge = (int) Math.random() * 10000 + 1;
+            
+            /* Encrypt challenge number with public key on specified certificate */
+            byte[] certBytes = fileToBytes(certPath);
+            PemReader reader;
+            PEMParser parser;
+            //Use reader to create X509CertificateHolder object from corresponding byte array
+            reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(certBytes)));
+            parser = new PEMParser(reader);
+            X509CertificateHolder certHolder = (X509CertificateHolder)parser.readObject();
+            //Now convert X509CertificateHolder to X509Certificate
+            JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
+            X509Certificate cert = certConverter.setProvider("BC").getCertificate(certHolder);
+            //Extract public ket from X509Certificate
+            PublicKey key = cert.getPublicKey();
+            //Encrypt challenge number using public key
+            byte[] plainText = BigInteger.valueOf(challenge).toByteArray();
+            byte[] cipherText = Challenge.encrypt(key, plainText);
+            
+            //Send encrypted challenge number to client
+            outStream.write(cipherText);
+            
+            //Receive encrypted, incremented challenge number from client
+            //ERROR: NOT SURE HOW MANY BYTES TO READ HERE
+            byte[] modifiedCipher = new byte[128];
+            inStream.read(modifiedCipher);
+            
+            //Decrypt received data with client's public key, and compare to challenge number
+            byte[] modifiedPlain = Challenge.decrypt(key, modifiedCipher);
+            int modChallenge = byteArrayToInt(modifiedPlain);
+            boolean pass = (modChallenge == challenge + 1);
+            
+            //Tell client whether they passed or failed
+            if(pass) {
+                //Tell client they passed
+                dos.writeInt(PASS_CHALLENGE);
+            }
+            else {
+                //Tell client they failed. Return
+                dos.writeInt(FAIL_CHALLENGE);
+                return;
+            }
+        } catch(Exception e) {
+            //Send error message to client; encryption/decrytpion failed
+            dos.writeInt(CRYPTO_FAIL);
+            e.printStackTrace();
+            return ;
+        }
         
         //We've found file and certificate, so now vouch for file with certificate
         f.vouch(certName);

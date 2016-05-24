@@ -20,6 +20,7 @@ public class Challenge {
         return cipherText;
     }
     
+    //Decrypt cipher with private key
     public static byte[] decrypt(PublicKey key, byte[] cipherText) throws Exception {
         //Create RSA Cipher object (specifying algorithm, mode, and padding
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
