@@ -107,6 +107,8 @@ extern SSL *secureConnection(const char*, const char *);
 //extern void vouchForFile(char *, char *);
 
 //------------------------------------------------------------------
-// Package accessible variables
+// Package accessible variables and definitions
 //------------------------------------------------------------------
 extern const char* programName;
+#define PUBLIC_KEY "certificates/public.crt"
+#define PRIVATE_KEY "certificates/private.key"
