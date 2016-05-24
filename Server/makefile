@@ -13,7 +13,7 @@ LIBS = lib/jgrapht-core-0.9.1.jar:lib/bcprov-jdk15on-154.jar:lib/bcpkix-jdk15on-
 JFLAGS = -cp
 
 $(PROJECT) : $(CLASS)
-	$(JC) $(JFLAGS) $(LIBS) $(SOURCES)
+	$(JC) $(JFLAGS) $(LIBS) $(SOURCES) -Xlint
 
 clean:
 	rm -f $(CLASS)

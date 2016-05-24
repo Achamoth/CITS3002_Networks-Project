@@ -46,6 +46,8 @@ public class Server {
     private static final int FILE_FOUND = 16;
     private static final int MEMBER_REQUIRED = 17;
     private static final int MEMBER_NOT_REQUIRED = 18;
+    private static final int CLIENT_VALID_FILE = 19;
+    private static final int CLIENT_INVALID_FILE = 20;
     
     private static ArrayList<ServerFile> files;
     
@@ -200,7 +202,14 @@ public class Server {
     public static void saveFile(Socket s) throws Exception {
         InputStream inStream = s.getInputStream();
         OutputStream outStream = s.getOutputStream();
+        DataInputStream dis = new DataInputStream(inStream);
         FileOutputStream fos = null;
+        
+        //First, client will report whether or not it has the file
+        int clientHasFile = dis.readInt();
+        if(clientHasFile == CLIENT_INVALID_FILE) {
+            return ;
+        }
         
         //Read file name off socket
         BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
@@ -462,6 +471,59 @@ public class Server {
         //TODO: Might want to send success code back to client. I'll leave it for now.
     }
     
+    //Service client request for file list
+    //http://www.java-forums.org/new-java/34049-simple-socket-program-java-client-c-server.html
+    public static void listFiles(Socket s) throws Exception {
+        OutputStream outStream = s.getOutputStream();
+        InputStream inStream = s.getInputStream();
+        DataOutputStream dos = new DataOutputStream(outStream);
+        DataInputStream dis = new DataInputStream(inStream);
+        
+        
+        //First, server needs to send number of files
+        int nFiles = files.size();
+        dos.writeInt(nFiles);
+        
+        //Next, server will send data for each file
+        for(ServerFile f : files) {
+            //Start with filename
+            char[] strArray = f.getFilename().toCharArray();
+            //First send length
+            dos.writeInt(strArray.length);
+            //Then send name
+            for(int j=0; j<strArray.length; j++) {
+                outStream.write(strArray[j]);
+            }
+            
+            //Next, send circle size and circle details of file
+            List<String> largestCircle = f.getCircleDetails();
+            int circleSize = 0;
+            if(largestCircle != null) circleSize = largestCircle.size();
+            
+            //Start with circle size
+            dos.writeInt(circleSize);
+            //Check if largestCircle is still null (i.e. circle of 0)
+            if(largestCircle == null) {
+                continue;
+            }
+            //Now send name of each circle member
+            for(String member : largestCircle) {
+                //First, grab common name from cleartext of certificate
+                String commonName = retrieveCertName(member);
+                strArray = commonName.toCharArray();
+                //First send the length
+                dos.writeInt(strArray.length);
+                //Now send the name
+                for(int i=0; i<strArray.length; i++) {
+                    outStream.write(strArray[i]);
+                }
+            }
+        }
+        
+        //Close resources
+        dos.close();
+    }
+    
     //Finds specified file inside 'files' arraylist
     private static ServerFile findFile(String filename) {
         for(ServerFile f : files) {
@@ -471,6 +533,13 @@ public class Server {
         }
         return null;
     }
+    
+    //Given the cleartext of a certificate, get the common name and return it
+    private static String retrieveCertName(String certText) {
+        String copy = new String(certText);
+        String[] tokens = copy.split(",");
+        return tokens[0].substring(3);
+    }
 }
 
 //Class handles client input for one server socket connection (allowing for multiple simultaneous client connections)
@@ -478,6 +547,7 @@ class ThreadedHandler implements Runnable {
     private static final int UPLOAD = 1;
     private static final int DOWNLOAD = 2;
     private static final int UPLOAD_CERT = 3;
+    private static final int LIST = 4;
     private static final int VOUCH = 6;
     
 	private Socket incoming;
@@ -538,6 +608,14 @@ class ThreadedHandler implements Runnable {
                 //Client wants to vouch for specified file with specified certificate
                 try {
                     Server.vouchForFile(incoming);
+                } catch(Exception e) {
+                    e.printStackTrace();
+                }
+                break;
+            case LIST:
+                //Client wants Server to send list of files, and protection on each file
+                try {
+                    Server.listFiles(incoming);
                 } catch(Exception e) {
                     e.printStackTrace();
                 }
