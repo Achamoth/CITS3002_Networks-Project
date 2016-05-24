@@ -107,6 +107,18 @@ static int readResponse(SSL *ssl) {
     @param action       Type of message / action
 */
 static void sendFile(SSL *ssl, char *fileName){
+    //  Create file pointer
+    FILE *fp = fopen(fileName, "rb");
+    if(fp == NULL) {
+        perror("File Pointer");
+        sendInt(ssl, CLIENT_INVALID_FILE); //ERROR CHECKING
+        closeConnection();
+        exit(EXIT_FAILURE);
+    }
+    
+    //Tell server that we have the file (i.e. filename wasn't invalid)
+    sendInt(ssl, CLIENT_VALID_FILE); //ERROR CHECKING
+    
     // Send file name to server
     sendFileString(fileName, ssl);
     
@@ -125,14 +137,6 @@ static void sendFile(SSL *ssl, char *fileName){
         fprintf(stdout, "%s: Server acknowledgement recieved.\n"
             "\tSending file...\n",
             programName);
-    }
-    
-    //  Create file pointer
-    FILE *fp = fopen(fileName, "rb");
-    if(fp == NULL) {
-        perror("File Pointer");
-        closeConnection();
-        exit(EXIT_FAILURE);
     }
     
     //  Send file to server in 1024 byte chunks
@@ -293,8 +297,54 @@ void vouch(SSL *ssl, char *file, char *certificate) {
         closeConnection();
         exit(EXIT_FAILURE);
     }
+    fprintf(stdout, "%s: Successfully vouched for \"%s\" with \"%s\"\n", programName, file, certificate);
+}
+
+//Request that server send list of files that it contains, along with each file's level of protection
+void list(SSL *ssl) {
+    printf("\n");
+    //Server will start by sending the number of files
+    int nFiles = readResponse(ssl);
+    printf("%d files on server\n\n", nFiles);
     
-    //TODO: Might want to add some stuff here later. I'll leave it for now
+    //Server will then send data for each file
+    for(int i=0; i<nFiles; i++) {
+        char filename[260]; //260 characters is the max filename length
+        char recvChar;
+        int circleSize;
+        int j = 0;
+        //Server will first send the length of the file
+        int nameLength = readResponse(ssl);
+        //Server will then send the name of the file
+        for(int x=0; x<nameLength; x++) {
+            SSL_read(ssl, &recvChar, sizeof(char));
+            filename[j++] = recvChar;
+        }
+        filename[j] = '\0';
+        //Print filename
+        printf("%s\n", filename);
+        //Now, server will send the size of the circle of trust
+        circleSize = readResponse(ssl);
+        //Print circle size
+        printf("Circle size %d : ", circleSize);
+        //Now, server will send list of names used to
+        for(int k=0; k<circleSize; k++) {
+            if(k != 0) printf(", ");
+            char curName[30];
+            j=0;
+            //Read name length
+            nameLength = readResponse(ssl);
+            //Read current name
+            for(int x=0; x<nameLength; x++) {
+                SSL_read(ssl, &recvChar, sizeof(char));
+                curName[j++] = recvChar;
+            }
+            curName[j] = '\0';
+            //Print voucher's name
+            printf("%s", curName);
+        }
+        printf("\n\n");
+    }
 }
 
 
@@ -361,6 +411,11 @@ void parseRequest(char *host, char *port, actionType action, char *file,
             }
             sendAction(ssl, VOUCH);
             vouch(ssl, file, certificate);
+            break;
+        case LIST:
+            //Request server to list all items, and their level of protection
+            sendAction(ssl, LIST);
+            list(ssl);
             break;
         default:
             // Error action should be set

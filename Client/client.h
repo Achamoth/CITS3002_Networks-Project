@@ -31,6 +31,8 @@
 #define FILE_FOUND 16
 #define MEMBER_REQUIRED 17
 #define MEMBER_NOT_REQUIRED 18
+#define CLIENT_VALID_FILE 19
+#define CLIENT_INVALID_FILE 20
 /*#define PUSH 1
 #define PULL 2
 #define PUSH_CERT 3

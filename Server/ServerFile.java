@@ -58,7 +58,7 @@ public class ServerFile {
         boolean reqMember = (requiredMember != null);
         
         if(!reqMember) {
-            /* No member required. Simply find the first circle that satisfies minCircleSize */
+            /* No member required. Simply find the largest circle and compare it to minCircleSize */
             
             //Find all directed cycles contained within 'circle'
             JohnsonSimpleCycles<String, DefaultEdge> cycleFinder = new JohnsonSimpleCycles<String, DefaultEdge>(circle);
@@ -236,5 +236,34 @@ public class ServerFile {
         
         //Now, verify signature on cert using public key (throws exception if verification fails)
         cert.verify(signerKey);
+    }
+    
+    //Send cirle size, and list of circle members, to client
+    public List<String> getCircleDetails() throws Exception {
+        //Need to start by initializing graph with vouchers
+        DirectedPseudograph<String, DefaultEdge> circle = null;
+        try {
+            circle = initGraph();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(0); //I'm not sure exiting here is a great idea
+        }
+        
+        //Find all directed cycles contained within 'circle'
+        JohnsonSimpleCycles<String, DefaultEdge> cycleFinder = new JohnsonSimpleCycles<String, DefaultEdge>(circle);
+        List<List<String>> circlesOfTrust = cycleFinder.findSimpleCycles();
+        
+        //Now find largest cycle
+        int largestCircleSize = 0;
+        List<String> largestCircle = null;
+        for(List<String> curCircle : circlesOfTrust) {
+            int curCircleSize = curCircle.size();
+            if(largestCircleSize < curCircleSize) {
+                largestCircleSize = curCircleSize;
+                largestCircle = curCircle;
+            }
+        }
+        //Return largest circle
+        return largestCircle;
     }
 }

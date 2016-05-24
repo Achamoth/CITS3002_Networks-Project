@@ -5,6 +5,7 @@
  Date:           May 2016
  */
 
+@SuppressWarnings("serial")
 public class FileDoesntExist extends RuntimeException {
 	
 	public FileDoesntExist(String s) {
