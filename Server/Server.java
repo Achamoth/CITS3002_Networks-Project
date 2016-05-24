@@ -8,13 +8,17 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.math.BigInteger;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
 import java.security.cert.Certificate;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.Security;
+import java.security.cert.CertPath;
+import java.security.cert.CertificateFactory;
 import javax.security.auth.x500.X500Principal;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.KeyManager;
@@ -22,6 +26,8 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSession;
 import org.bouncycastle.util.io.pem.PemObject;
 import org.bouncycastle.util.io.pem.PemReader;
 import org.bouncycastle.openssl.PEMParser;
@@ -48,6 +54,9 @@ public class Server {
     private static final int MEMBER_NOT_REQUIRED = 18;
     private static final int CLIENT_VALID_FILE = 19;
     private static final int CLIENT_INVALID_FILE = 20;
+    private static final int PASS_CHALLENGE = 21;
+    private static final int FAIL_CHALLENGE = 22;
+    private static final int CRYPTO_FAIL = 23;
     
     private static ArrayList<ServerFile> files;
     
@@ -55,7 +64,17 @@ public class Server {
         //Initialize file list
         files = new ArrayList<ServerFile>();
         
-        //TODO: Read csv file containing 'files' data
+        //Read csv file containing 'files' data
+        CsvReader.readCSV("data.csv", files);
+        
+        //Ensure that data is written to CSV file on shutdown
+        //http://stackoverflow.com/questions/2361510/how-to-save-application-options-before-exit
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+            
+            public void run() {
+                CsvWriter.writeToCSV("data.csv", files);
+            }
+        }));
         
         //Initialize string pemPath
         String pemPath = System.getProperty("user.dir") + "/PEM/";
@@ -94,6 +113,7 @@ public class Server {
             try {
                 System.out.println("Waiting on port: " + PORT);
                 incoming = s.accept();
+                
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -105,10 +125,8 @@ public class Server {
             t.start();
             i++;
 		}
-        
-        //TODO: Write 'files' data to csv file
 	}
-	
+    
 	//Creates SSLSocketFactory and initialises context using 2 PEM files (public-private key pair)
 	//Reference: http://stackoverflow.com/questions/12501117/programmatically-obtain-keystore-from-pem
 	//Reference: http://www.bouncycastle.org/wiki/display/JA1/Provider+Installation
@@ -315,7 +333,7 @@ public class Server {
         }
     }
     
-    /* 
+    /*
      * Looks at "temp.crt" in certificates folder and determines the common name of the certificate's owner
      * For use with saveCertificate() method
      */
@@ -337,7 +355,7 @@ public class Server {
         //Now convert X509CertificateHolder to X509Certificate
         JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
         X509Certificate cert = certConverter.setProvider("BC").getCertificate(certHolder);
-
+        
         //Now, get name on certificate
         X500Principal owner = cert.getSubjectX500Principal();
         String name = owner.getName();
@@ -465,10 +483,73 @@ public class Server {
         }
         dos.writeInt(FILE_FOUND);
         
+//        try {
+//            /* Now, verify that client owns certificate by sending them a challenge */
+//            
+//            //Generate a random challenge number
+//            int challenge = (int) Math.random() * 10000 + 1;
+//            
+//            /* Encrypt challenge number with public key on specified certificate */
+//            byte[] certBytes = fileToBytes(certPath);
+//            PemReader reader;
+//            PEMParser parser;
+//            //Use reader to create X509CertificateHolder object from corresponding byte array
+//            reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(certBytes)));
+//            parser = new PEMParser(reader);
+//            X509CertificateHolder certHolder = (X509CertificateHolder)parser.readObject();
+//            //Now convert X509CertificateHolder to X509Certificate
+//            JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
+//            X509Certificate cert = certConverter.setProvider("BC").getCertificate(certHolder);
+//            //Extract public ket from X509Certificate
+//            PublicKey key = cert.getPublicKey();
+//            //Encrypt challenge number using public key
+//            byte[] plainText = BigInteger.valueOf(challenge).toByteArray();
+//            byte[] cipherText = Challenge.encrypt(key, plainText);
+//            
+//            //Send encrypted challenge number to client
+//            outStream.write(cipherText);
+//            
+//            //Receive encrypted, incremented challenge number from client
+//            //ERROR: NOT SURE HOW MANY BYTES TO READ HERE
+//            byte[] modifiedCipher = new byte[128];
+//            inStream.read(modifiedCipher);
+//            
+//            //Decrypt received data with client's public key, and compare to challenge number
+//            byte[] modifiedPlain = Challenge.decrypt(key, modifiedCipher);
+//            int modChallenge = byteArrayToInt(modifiedPlain);
+//            boolean pass = (modChallenge == challenge + 1);
+//            
+//            //Tell client whether they passed or failed
+//            if(pass) {
+//                //Tell client they passed
+//                dos.writeInt(PASS_CHALLENGE);
+//            }
+//            else {
+//                //Tell client they failed. Return
+//                dos.writeInt(FAIL_CHALLENGE);
+//                return;
+//            }
+//        } catch(Exception e) {
+//            //Send error message to client; encryption/decrytpion failed
+//            dos.writeInt(CRYPTO_FAIL);
+//            e.printStackTrace();
+//            return ;
+//        }
+        
         //We've found file and certificate, so now vouch for file with certificate
         f.vouch(certName);
         
         //TODO: Might want to send success code back to client. I'll leave it for now.
+    }
+    
+    //Convert byte array to int
+    //http://stackoverflow.com/questions/5399798/byte-array-and-int-conversion-in-java
+    public static int byteArrayToInt(byte[] b)
+    {
+        return   b[3] & 0xFF |
+        (b[2] & 0xFF) << 8 |
+        (b[1] & 0xFF) << 16 |
+        (b[0] & 0xFF) << 24;
     }
     
     //Service client request for file list

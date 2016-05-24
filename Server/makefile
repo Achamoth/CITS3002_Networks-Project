@@ -16,5 +16,5 @@ $(PROJECT) : $(CLASS)
 	$(JC) $(JFLAGS) $(LIBS) $(SOURCES) -Xlint
 
 clean:
-	rm -f $(CLASS)
+	rm -f *.class
 	
