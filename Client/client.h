@@ -33,6 +33,9 @@
 #define MEMBER_NOT_REQUIRED 18
 #define CLIENT_VALID_FILE 19
 #define CLIENT_INVALID_FILE 20
+#define PASS_CHALLENGE 21
+#define FAIL_CHALLENGE 22
+#define CRYPTO_FAIL 23
 /*#define PUSH 1
 #define PULL 2
 #define PUSH_CERT 3

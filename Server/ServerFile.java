@@ -43,6 +43,11 @@ public class ServerFile {
         return this.filename;
     }
     
+    //Returns 'certificates'
+    public ArrayList<String> getVouchers() {
+        return this.certificates;
+    }
+    
     //Calculates a circle of trust, and checks that the circle satisfies given requirements. Returns true or false
     public boolean meetsRequirements(int minCircleSize, String requiredMember) {
         //Need to start by initializing graph with vouchers
