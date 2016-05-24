@@ -6,6 +6,28 @@
 */
 #include "client.h"
 
+
+static void handleChallenge(){
+    // receive challenge number as byte array
+    int bytes = 
+
+    char *response = malloc(sizeof(privateKey));
+    // decrypt the bytes received
+    int bytes = 30;
+    unsigned char message[30];
+    RSA *privateKey;
+
+
+    RSA_private_decrypt(bytes, challenge, response, privateKey, RSA_PKCS1_PADDING);
+
+
+
+    RSA_private_encrypt();
+
+
+    free response;
+}
+
 /*
     sendAction
     
@@ -81,21 +103,6 @@ static int readResponse(SSL *ssl) {
     return ntohl(receivedInt);
 }
 
-void handleAcknowledgement(int response){
-    //  Confirm response is a positive acknowledgment
-    if(response != ACKNOWLEDGMENT){
-        fprintf(stderr, "%s Error: Acknowledgment not received.\n",
-            programName);
-        fprintf(stderr, "%s: Error: Acknowledgment not received.\n Response " 
-            "fromOldTrusty Server: %d\n", programName, response);
-        closeConnection();
-        exit(EXIT_FAILURE);
-    }
-    else{
-        fprintf(stdout, "%s: Server acknowledgement recieved.\n", programName);
-    }
-}
-
 /*
     sendFile
 
@@ -111,8 +118,21 @@ static void sendFile(SSL *ssl, char *fileName){
     sendFileString(fileName, ssl);
     
     //  Wait for server response    
-    handleAcknowledgement(readResponse(ssl));
-    fprintf(stdout, "Sending file...\n", programName);    
+    int response = readResponse(ssl);
+    //  Confirm response is a positive acknowledgment
+    if(response != ACKNOWLEDGMENT){
+        fprintf(stderr, "%s Error: Acknowledgment not received.\n",
+            programName);
+        fprintf(stderr, "%s: Error: Acknowledgment not received.\n Response " 
+            "fromOldTrusty Server: %d\n", programName, response);
+        closeConnection();
+        exit(EXIT_FAILURE);
+    }
+    else{
+        fprintf(stdout, "%s: Server acknowledgement recieved.\n"
+            "\tSending file...\n",
+            programName);
+    }
     
     //  Create file pointer
     FILE *fp = fopen(fileName, "rb");
@@ -218,8 +238,12 @@ void getFile(SSL *ssl, char *fileName, int security) {
         closeConnection();
         exit(EXIT_FAILURE);
     }
+    //  Check reason for closure
+    if(bytes == SSL_ERROR_ZERO_RETURN){
+        fprintf(stdout, "%s: File Download Complete.", programName); 
+    }
     else{
-        fprintf(stdout, "%s: File Download Complete.", programName);
+        SSL_get_error(ssl, bytes); 
     }
     //Free all memory and close resources
     fclose(fp);
@@ -266,25 +290,6 @@ void vouch(SSL *ssl, char *file, char *certificate) {
     //TODO: Might want to add some stuff here later. I'll leave it for now
 }
 
-/*
-    listServerFiles
-
-    Fetches list of files on server and security rating, outputs to STDOUT
-    Assume list of files is less than 1 mb.
-    
-    @param  ssl     SSL session
-*/
-void listServerFiles(SSL *ssl){
-    //  Wait for server response on server listing
-    handleAcknowledgement(readResponse(ssl));
-    fprintf(stdout, "Receiving List...\n", programName);
-
-    //  Wait for server to send file, and read it 1024 bytes at a time
-    unsigned char buffer[1024];
-    SSL_read(ssl, buffer, sizeof(buffer));
-    fprintf(stdout, "%s\n\n", buffer);
-}
-
 
 /*
     sendMessage
@@ -304,7 +309,7 @@ void parseRequest(char *host, char *port, actionType action, char *file,
         char *certificate, int minCircle, char *member, bool memberRequested){
     //  Require host and port
     if(host == NULL || port == NULL){
-        fprintf(stderr, "%s Error: Host and port required.\n", programName);
+        fprintf(stderr, "%s: Host and port required.\n", programName);
         usage();
     }
     //Establish connection with server
@@ -315,7 +320,7 @@ void parseRequest(char *host, char *port, actionType action, char *file,
         case PUSH:{
             //  Check for file presence
             if(file == NULL){
-                fprintf(stderr, "%s Error: File to upload not found.\n", programName);
+                fprintf(stderr, "%s: File to upload not found.\n", programName);
                 usage();
             }
             sendAction(ssl, PUSH);
@@ -330,7 +335,7 @@ void parseRequest(char *host, char *port, actionType action, char *file,
         case PUSH_CERT:
             //Upload certificate to server
             if(certificate == NULL) {
-                fprintf(stderr, "%s Error: Certificate to upload not found.\n", 
+                fprintf(stderr, "%s: Certificate to upload not found.\n", 
                     programName);
                 usage();
             }
@@ -340,23 +345,19 @@ void parseRequest(char *host, char *port, actionType action, char *file,
         case VOUCH:
             //Vouch for specified file with specified certificate
             if(file == NULL) {
-                fprintf(stderr, "%s Error: File to vouch for not found.\n", programName);
+                fprintf(stderr, "%s: File to vouch for not found.\n", programName);
                 usage();
             }
-            if(certificate == NULL) {
-                fprintf(stderr, "%s Error: Certificate to vouch with not found.\n", programName);
+            else if(certificate == NULL) {
+                fprintf(stderr, "%s: Certificate to vouch with not found.\n", programName);
                 usage();
             }
             sendAction(ssl, VOUCH);
             vouch(ssl, file, certificate);
             break;
-        case LIST:
-            sendAction(ssl, LIST);
-            listServerFiles();
-            break;
         default:
             // Error action should be set
-            fprintf(stderr, "%s Error: Action not set while parsing user request\n",
+            fprintf(stderr, "%s: Action not set while parsing user request\n",
                 programName);
             exit(EXIT_FAILURE);
     }

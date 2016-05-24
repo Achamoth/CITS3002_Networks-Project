@@ -1,3 +1,9 @@
+# CITS3002 Project 2016
+# Name:                 Ammar Abu Shamleh, Pradyumn Vij
+# Student number(s):    21521274, 21469477
+
+#   Make file for oldTrusty Server program
+
 PROJECT = oldTrusty
 SOURCES = $(wildcard *.java)
 CLASS = $(wildcard *.class)
