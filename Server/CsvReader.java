@@ -10,6 +10,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.File;
 import java.util.ArrayList;
+import java.lang.NullPointerException;
 
 /**
  *  Class that governs reading from persistent storage using Csv files
@@ -29,6 +30,9 @@ public class CsvReader {
         
     readattempt: try {
         String line = null;
+        
+        //First, decrypt file, if it exists
+        Crypto.decryptCSV();
         
         //Load file and create reader
         File f = new File(filename);
