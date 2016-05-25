@@ -1,0 +1,2 @@
+rm oldTrustyClient
+make

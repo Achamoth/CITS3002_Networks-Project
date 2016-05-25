@@ -434,6 +434,7 @@ public class Server {
         dos.close();
         fis.close();
         in.close();
+        din.close();
         inStream.close();
         outStream.close();
     }
@@ -489,7 +490,8 @@ public class Server {
             /* Now, verify that client owns certificate by sending them a challenge */
             
             //Generate a random challenge number
-            int challenge = (int) Math.random() * 10000 + 1; //RANDOMIZE THIS
+            Random rng = new Random(System.nanoTime());
+            int challenge = rng.nextInt(10000)+1;
             
             /* Encrypt challenge number with public key on specified certificate */
             byte[] certBytes = fileToBytes(certPath);
@@ -505,7 +507,7 @@ public class Server {
             //Extract public ket from X509Certificate
             PublicKey key = cert.getPublicKey();
             //Encrypt challenge number using public key
-            byte[] plainText = BigInteger.valueOf(challenge).toByteArray();
+            byte[] plainText = intToByteArray(challenge);
             byte[] cipherText = Challenge.encrypt(key, plainText);
             
             //Send client length of cipher
@@ -529,7 +531,6 @@ public class Server {
             //Decrypt received data with client's public key, and compare to challenge number
             byte[] modifiedPlain = Challenge.decrypt(key, modifiedCipher);
             int modChallenge = byteArrayToInt(modifiedPlain);
-            System.out.println(modChallenge);
             boolean pass = (modChallenge == challenge + 1);
             
             //Tell client whether they passed or failed
@@ -552,14 +553,26 @@ public class Server {
         f.vouch(certName);
         
         //TODO: Might want to send success code back to client. I'll leave it for now.
+        
+        //Close relevant resources
+        inStream.close();
+        outStream.close();
+        dos.close();
+        dis.close();
+        in.close();
     }
     
-    //Convert byte array to int (THIS METHOD IS BROKEN)
+    //Convert byte array to int
     //http://stackoverflow.com/questions/5399798/byte-array-and-int-conversion-in-java
     public static int byteArrayToInt(byte[] b)
     {
         ByteBuffer wrapped = ByteBuffer.wrap(b);
         return wrapped.getInt();
+    }
+    
+    //Convert an int to a byte array
+    public static byte[] intToByteArray(int x) {
+        return ByteBuffer.allocate(4).putInt(x).array();
     }
     
     //Service client request for file list
@@ -612,7 +625,10 @@ public class Server {
         }
         
         //Close resources
+        dis.close();
         dos.close();
+        outStream.close();
+        inStream.close();
     }
     
     //Finds specified file inside 'files' arraylist

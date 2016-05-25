@@ -113,7 +113,7 @@ static void handleChallenge(SSL *ssl){
     // Assign max encrytped memory block
     unsigned char encrypted[keyLength];
     // Assign memory block to pass plain text to
-    unsigned char decrypted[keyLength];
+    unsigned char decrypted[4];
     
     //Read length of cipher (sent by Server)
     int cipherLength = readResponse(ssl);
@@ -136,6 +136,7 @@ static void handleChallenge(SSL *ssl){
     
     // Add 1 or do some other change to number or long or uint64
     int challengeNumber = *(int*) decrypted;
+    challengeNumber = ntohl(challengeNumber);
     ++challengeNumber;
     
     // Convert int to character pointer
