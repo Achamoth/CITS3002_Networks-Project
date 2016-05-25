@@ -21,8 +21,9 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 
 
-//This class deals with encryption and decryption for the server-client challenge
+//This class deals with encryption and decryption for the server-client challenge, and the CSV file
 //http://www.mobilefish.com/developer/bouncycastle/bouncycastle.html
+//http://www.codejava.net/coding/file-encryption-and-decryption-simple-example
 public class Crypto {
     
     //Encrypt plainText with public key
