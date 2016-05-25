@@ -6,6 +6,53 @@
 */
 #include "client.h"
 
+/*
+ readByteArray
+ 
+ @param  bytes       Expected number of bytes to receive in byte array
+ */
+/*static char *readByteArray(int numBytes, SSL *ssl){
+    char *buffer = malloc(numBytes);
+    int receivedBytes = 0;
+    int i = 0;
+    while(receivedBytes < numBytes){
+        int readBytes =
+        SSL_read(ssl, buffer + i,(sizeof buffer) - receivedBytes);
+        receivedBytes += readBytes;
+        ++i;
+    }
+    return buffer;
+}*/
+
+/*
+ readResponse
+ 
+ Give function an SSL connection when expecting an int response from server
+ Function reads connection and returns int response (when it arrives)
+ http://stackoverflow.com/questions/16117681/sending-int-via-socket-from-java-to-c-strange-results
+ 
+ @param SSL * ssl    SSL session
+ */
+static int readResponse(SSL *ssl) {
+    //  Reads network-byte-order int off socket stream, and converts it to
+    //  host-byte-order int before returning
+    char intBuffer[4]; //Byte array for reading int
+    //  Counts number of bytes read (Java's writeInt() method sends 4-byte int,
+    //  so we need to read 4 bytes)
+    int receivedBytes = 0;
+    int i = 0;
+    while(receivedBytes < 4){
+        int readBytes = SSL_read(ssl, &intBuffer[i++],
+                                 (sizeof intBuffer) - receivedBytes);
+        receivedBytes += readBytes;
+    }
+    //  Convert byte-array to int
+    int receivedInt = *(int *) intBuffer;
+    
+    //  Converts int to host-byte-order and returns
+    return ntohl(receivedInt);
+}
+
 //Sends int so it can be read by Java's readInt() method
 //http://stackoverflow.com/questions/3784263/converting-an-int-into-a-4-byte-char-array-c
 static int sendInt(SSL *ssl, int n) {
@@ -22,6 +69,113 @@ static int sendInt(SSL *ssl, int n) {
 }
 
 /*
+ getRSAfrom
+ 
+ @param  privateKeyFile  Location of the PEM format private key
+ @return     RSA struct containing the private key, extracted from PEM
+ */
+static RSA *getRSAfrom(char *privateKeyFile){
+    RSA *rsa = NULL;
+    FILE *fp = fopen(privateKeyFile, "rb");
+    if(fp == NULL){
+        perror("Extract RSA from PEM file");
+        exit(EXIT_FAILURE);
+    }
+    else{
+        rsa = RSA_new();
+        if(rsa == NULL){
+            fprintf(stderr, "%s Error: Failed to create RSA.\n", programName);
+            exit(EXIT_FAILURE);
+        }
+        PEM_read_RSAPrivateKey(fp, &rsa, NULL, NULL);
+    }
+    return rsa;
+}
+
+
+/*
+ handleChallenge
+ 
+ Helper function when vouching, Server challenges when vouching for file
+ by sending a randomly generated number or code.
+ This code is then encrytped using the public key that the Server has,
+ corresponding to this client.
+ The client decrypts with its private key, makes the appropriate modification
+ then re-encrypts with the private key and sends back to Server to prove
+ that the client has the private key and is indeed holding the private key.
+ */
+static void handleChallenge(SSL *ssl){
+    //  Get the RSA
+    RSA *privateKey = getRSAfrom(PRIVATE_KEY);
+    // Size of key or RSA
+    int keyLength = RSA_size(privateKey);
+    
+    // Assign max encrytped memory block
+    unsigned char encrypted[keyLength];
+    // Assign memory block to pass plain text to
+    unsigned char decrypted[keyLength];
+    
+    //Read length of cipher (sent by Server)
+    int cipherLength = readResponse(ssl);
+    
+    //Read cipher byte by byte off connection
+    for(int i=0; i<cipherLength; i++) {
+        SSL_read(ssl, &encrypted[i], 1);
+    }
+    
+    // Decrypt challenge
+    if(RSA_private_decrypt(keyLength, encrypted, decrypted, privateKey,
+                           RSA_PKCS1_PADDING) < 0){
+        fprintf(stderr, "%s Error: Could not decrypt Server's vouch challenge\n", programName);
+        closeConnection();
+        exit(EXIT_FAILURE);
+    }
+    else{
+        fprintf(stdout, "%s: Decrypted Server vouch challenge.\n", programName);
+    }
+    
+    // Add 1 or do some other change to number or long or uint64
+    int challengeNumber = *(int*) decrypted;
+    ++challengeNumber;
+    
+    // Convert int to character pointer
+    convertToBytes(htonl(challengeNumber), decrypted);
+    
+    // Encrypt challenge answer
+    unsigned char encryptedModified[keyLength];
+    if(RSA_private_encrypt(4, decrypted, encryptedModified, privateKey, RSA_PKCS1_PADDING) < 0){
+        fprintf(stderr, "%s Error: Encrypting vouch reply failed.\n" ,programName);
+        closeConnection();
+        exit(EXIT_FAILURE);
+    }
+    else{
+        fprintf(stdout, "%s: Encrypted vouch reply.\n", programName);
+    }
+    
+    //Send keyLength
+    sendInt(ssl, keyLength);
+    
+    // Send Vouch Challenge response
+    if(SSL_write(ssl, encryptedModified, keyLength) < 0){
+        fprintf(stderr, "%s Error: Sending vouch challenge response failed.",
+                programName);
+    }
+    else{
+        fprintf(stdout, "%s: Vouch Challenge sent successfully.\n", programName);
+    }
+    
+    RSA_free(privateKey);
+}
+
+//Converts an int to a 4 byte character array
+void convertToBytes(int n, unsigned char bytes[]) {
+    bytes[0] = n;
+    bytes[1] = n>>8;
+    bytes[2] = n>>16;
+    bytes[3] = n>>24;
+}
+
+/*
     sendAction
     
     Sends the type of message to the server.
@@ -31,7 +185,7 @@ static int sendInt(SSL *ssl, int n) {
 */
 static void sendAction(SSL *ssl, actionType action){
     if(sendInt(ssl, action) < 0){
-        fprintf(stderr, "%s: Sending action type unsuccessful.\n", programName);
+        fprintf(stderr, "%s: Error: Sending action type unsuccessful.\n", programName);
         closeConnection();
         exit(EXIT_FAILURE);
     }
@@ -58,42 +212,13 @@ static void sendFileString(char *fileName, SSL *ssl){
     serverFormattedName[strlen(serverFormattedName)] = '\n';
     if(SSL_write(ssl, serverFormattedName, 
         sizeof(char)*strlen(serverFormattedName)) < 0){
-        fprintf(stderr, "%s: Sending filename/membername unsuccessful.\n", programName);
+        fprintf(stderr, "%s: Error: Sending filename/membername unsuccessful.\n", programName);
         closeConnection();
         exit(EXIT_FAILURE);
     }
     else{
         fprintf(stdout, "%s: Filename/Membername sent successfully.\n", programName);
     }
-}
-
-/*
-    readResponse
-
-    Give function an SSL connection when expecting an int response from server
-    Function reads connection and returns int response (when it arrives)
-    http://stackoverflow.com/questions/16117681/sending-int-via-socket-from-java-to-c-strange-results
-
-    @param SSL * ssl    SSL session
-*/
-static int readResponse(SSL *ssl) {
-    //  Reads network-byte-order int off socket stream, and converts it to
-    //  host-byte-order int before returning
-    char intBuffer[4]; //Byte array for reading int
-    //  Counts number of bytes read (Java's writeInt() method sends 4-byte int, 
-    //  so we need to read 4 bytes)
-    int receivedBytes = 0; 
-    int i = 0;
-    while(receivedBytes < 4){
-        int readBytes = SSL_read(ssl, &intBuffer[i++], 
-            (sizeof intBuffer) - receivedBytes);
-        receivedBytes += readBytes;
-    }
-    //  Convert byte-array to int
-    int receivedInt = *(int *) intBuffer;
-    
-    //  Converts int to host-byte-order and returns
-    return ntohl(receivedInt);
 }
 
 /*
@@ -129,7 +254,7 @@ static void sendFile(SSL *ssl, char *fileName){
         fprintf(stderr, "%s Error: Acknowledgment not received.\n",
             programName);
         fprintf(stderr, "%s: Error: Acknowledgment not received.\n Response " 
-            "fromOldTrusty Server: %d\n", programName, response);
+            "from Server: %d\n", programName, response);
         closeConnection();
         exit(EXIT_FAILURE);
     }
@@ -151,7 +276,7 @@ static void sendFile(SSL *ssl, char *fileName){
         read += bytes;
     }
     if(written != read){
-        fprintf(stderr, "%s: File Transfer Error.\n", programName);
+        fprintf(stderr, "%s: Error: File Transfer Error.\n", programName);
         closeConnection();
         exit(EXIT_FAILURE);
     }
@@ -170,7 +295,7 @@ static void sendFile(SSL *ssl, char *fileName){
 void getFile(SSL *ssl, char *fileName, int security, char* member) {
     // need to send security length
     if(sendInt(ssl, security) < 0) {
-        fprintf(stderr, "%s: Sending required circle size unsuccessful.\n", programName);
+        fprintf(stderr, "%s: Error: Sending required circle size unsuccessful.\n", programName);
         closeConnection();
         exit(EXIT_FAILURE);
     }
@@ -201,8 +326,8 @@ void getFile(SSL *ssl, char *fileName, int security, char* member) {
                 "server\n", programName);
         }
         else{   // Inappropriate repsonse from Server
-            fprintf(stderr, "%s: Unkown error occured.\n Response from "
-                "OldTrusty Server: %d\n", programName, response);
+            fprintf(stderr, "%s: Error: Unkown error.\n Response from "
+                "Server: %d\n", programName, response);
         }
         closeConnection();
         exit(EXIT_FAILURE);
@@ -217,8 +342,8 @@ void getFile(SSL *ssl, char *fileName, int security, char* member) {
                     "requirements.\n");
             }
             else{   // Inappropriate response from Server
-                fprintf(stderr, "%s: Unkown error occured.\n Response from "
-                    "OldTrusty Server: %d\n", programName, response);
+                fprintf(stderr, "%s: Error: Unkown error.\n Response from "
+                    "Server: %d\n", programName, response);
             }
             closeConnection();
             exit(EXIT_FAILURE);
@@ -245,7 +370,7 @@ void getFile(SSL *ssl, char *fileName, int security, char* member) {
         read += bytes;
     }
     if(written != read){
-        fprintf(stderr, "%s: File Transfer Error.\n", programName);
+        fprintf(stderr, "%s: Error: File Transfer Error.\n", programName);
         closeConnection();
         exit(EXIT_FAILURE);
     }
@@ -273,8 +398,8 @@ void vouch(SSL *ssl, char *file, char *certificate) {
                     "server\n", programName);
         }
         else{   // Inappropriate repsonse from Server
-            fprintf(stderr, "%s: Unkown error occured.\n Response from "
-                    "OldTrusty Server: %d\n", programName, response);
+            fprintf(stderr, "%s: Error: Unkown error.\n Response from "
+                    "Server: %d\n", programName, response);
         }
         closeConnection();
         exit(EXIT_FAILURE);
@@ -287,16 +412,37 @@ void vouch(SSL *ssl, char *file, char *certificate) {
     response = readResponse(ssl);
     if(response != FILE_FOUND) {
         if(response == FILE_NOT_FOUND){
-            fprintf(stderr, "%s Error: Specified certificate cannot be found on"
+            fprintf(stderr, "%s Error: Specified certificate cannot be found on "
                     "server\n", programName);
         }
         else{   // Inappropriate repsonse from Server
-            fprintf(stderr, "%s: Unkown error occured.\n Response from "
-                    "OldTrusty Server: %d\n", programName, response);
+            fprintf(stderr, "%s: Error: Unkown error.\n Response from "
+                    "Server: %d\n", programName, response);
         }
         closeConnection();
         exit(EXIT_FAILURE);
     }
+    
+    //Server will now issue cryptographic challenge
+    handleChallenge(ssl);
+    
+    //Now Server will inform the client whether or not it passed the challenge
+    response = readResponse(ssl);
+    if(response != PASS_CHALLENGE) {
+        if(response == FAIL_CHALLENGE) {
+            fprintf(stderr, "%s Error: Failed to pass Server's cryptographic challenge. Authorization to vouch not given.\n", programName);
+            closeConnection();
+            exit(EXIT_FAILURE);
+        }
+        else { //Inappropriate response from Server
+            fprintf(stderr, "%s Error: Unknown error.\n Response from Server: %d\n", programName, response);
+            closeConnection();
+            exit(EXIT_FAILURE);
+        }
+    }
+    
+    fprintf(stdout, "%s: Successfully passed Server's cryptographic challenge. Authorization to vouch given\n", programName);
+    
     fprintf(stdout, "%s: Successfully vouched for \"%s\" with \"%s\"\n", programName, file, certificate);
 }
 

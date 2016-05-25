@@ -11,6 +11,7 @@ import java.util.*;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.ByteBuffer;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
 import java.security.cert.Certificate;
@@ -452,6 +453,7 @@ public class Server {
         InputStream inStream = s.getInputStream();
         OutputStream outStream = s.getOutputStream();
         DataOutputStream dos = new DataOutputStream(outStream);
+        DataInputStream dis = new DataInputStream(inStream);
         BufferedReader in = new BufferedReader(new InputStreamReader(inStream));
         
         //First, client will send filename
@@ -487,7 +489,7 @@ public class Server {
             /* Now, verify that client owns certificate by sending them a challenge */
             
             //Generate a random challenge number
-            int challenge = (int) Math.random() * 10000 + 1;
+            int challenge = (int) Math.random() * 10000 + 1; //RANDOMIZE THIS
             
             /* Encrypt challenge number with public key on specified certificate */
             byte[] certBytes = fileToBytes(certPath);
@@ -506,17 +508,28 @@ public class Server {
             byte[] plainText = BigInteger.valueOf(challenge).toByteArray();
             byte[] cipherText = Challenge.encrypt(key, plainText);
             
-            //Send encrypted challenge number to client
-            outStream.write(cipherText);
+            //Send client length of cipher
+            dos.writeInt(cipherText.length);
+            
+            //Send encrypted challenge number to client byte-by-byte
+            for(int i=0; i<cipherText.length; i++) {
+                outStream.write(cipherText[i]);
+            }
+            
+            //Receive keyLength
+            int keyLength = dis.readInt();
             
             //Receive encrypted, incremented challenge number from client
-            //ERROR: NOT SURE HOW MANY BYTES TO READ HERE
             byte[] modifiedCipher = new byte[128];
-            inStream.read(modifiedCipher);
+            for(int i=0; i<keyLength; i++) {
+                byte b = (byte) inStream.read();
+                modifiedCipher[i] = b;
+            }
             
             //Decrypt received data with client's public key, and compare to challenge number
             byte[] modifiedPlain = Challenge.decrypt(key, modifiedCipher);
             int modChallenge = byteArrayToInt(modifiedPlain);
+            System.out.println(modChallenge);
             boolean pass = (modChallenge == challenge + 1);
             
             //Tell client whether they passed or failed
@@ -530,8 +543,7 @@ public class Server {
                 return;
             }
         } catch(Exception e) {
-            //Send error message to client; encryption/decrytpion failed
-            dos.writeInt(CRYPTO_FAIL);
+            //Encryption/decryption probably failed
             e.printStackTrace();
             return ;
         }
@@ -542,14 +554,12 @@ public class Server {
         //TODO: Might want to send success code back to client. I'll leave it for now.
     }
     
-    //Convert byte array to int
+    //Convert byte array to int (THIS METHOD IS BROKEN)
     //http://stackoverflow.com/questions/5399798/byte-array-and-int-conversion-in-java
     public static int byteArrayToInt(byte[] b)
     {
-        return   b[3] & 0xFF |
-        (b[2] & 0xFF) << 8 |
-        (b[1] & 0xFF) << 16 |
-        (b[0] & 0xFF) << 24;
+        ByteBuffer wrapped = ByteBuffer.wrap(b);
+        return wrapped.getInt();
     }
     
     //Service client request for file list
