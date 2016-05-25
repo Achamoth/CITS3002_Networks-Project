@@ -237,7 +237,7 @@ public class Server {
         //Create file in correct directory
         String curPath = System.getProperty("user.dir");
         String filePath = curPath + "/Files/";
-        fos = new FileOutputStream(filePath + filename);
+        fos = new FileOutputStream(filePath + filename, false);
         
         //Send ack back to client
         DataOutputStream dos = new DataOutputStream(outStream);
@@ -254,7 +254,9 @@ public class Server {
             }
         }
         
-        //Record file in server's file list
+        //Record file in server's file list; replace old file if it already exists
+        ServerFile sf = findFile(filename);
+        files.remove(sf);
         ServerFile file = new ServerFile(filename);
         files.add(file);
         
