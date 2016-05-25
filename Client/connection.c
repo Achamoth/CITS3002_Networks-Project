@@ -5,8 +5,6 @@
     Date:           May 2016
 */
 #include "client.h"
-#define PUBLIC_KEY "certificates/public.crt"
-#define PRIVATE_KEY "certificates/private.key"
 
 static SSL* ssl;
 static SSL_CTX* sslContext;
