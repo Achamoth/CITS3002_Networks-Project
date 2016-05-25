@@ -245,6 +245,7 @@ static void sendFile(SSL *ssl, char *fileName){
     //Tell server that we have the file (i.e. filename wasn't invalid)
     sendInt(ssl, CLIENT_VALID_FILE); //ERROR CHECKING
     
+    
     // Send file name to server
     sendFileString(fileName, ssl);
     
@@ -315,8 +316,22 @@ void getFile(SSL *ssl, char *fileName, int security, char* member) {
         sendFileString(member, ssl);
     }
     
+    //timeout struct
+    struct timeval tv;
+    tv.tv_sec=10; //10 seconds
+    tv.tv_usec=0;
+    
     //  Send the name of file required
     sendFileString(fileName, ssl);
+    
+    //NOT TESTED YET BECAUSE I CAN'T COMPILE THE Makefile (OS X El Capitan OpenSSL headers issue)
+    //NEED TO CHECK IF IT WORKS PROPERLY
+    if(setsockopt(ssl, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof tv)<0){
+        fprintf(stderr, "%s Error: Timeout while waiting for server response.\n",
+            programName);
+        closeConnection();
+        exit(EXIT_FAILURE);
+    }
     
     //  Wait for server's response on availability of file
     int response;
