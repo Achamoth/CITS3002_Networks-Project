@@ -324,9 +324,8 @@ void getFile(SSL *ssl, char *fileName, int security, char* member) {
     //  Send the name of file required
     sendFileString(fileName, ssl);
     
-    //NOT TESTED YET BECAUSE I CAN'T COMPILE THE Makefile (OS X El Capitan OpenSSL headers issue)
     //NEED TO CHECK IF IT WORKS PROPERLY
-    if(setsockopt(ssl, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof tv)<0){
+    if(setsockopt(SSL_get_fd(ssl), SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof tv)<0){
         fprintf(stderr, "%s Error: Timeout while waiting for server response.\n",
             programName);
         closeConnection();
