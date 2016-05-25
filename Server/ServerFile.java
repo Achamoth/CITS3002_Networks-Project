@@ -11,6 +11,8 @@ import java.util.Set;
 import java.util.List;
 import java.security.cert.X509Certificate;
 import java.security.PublicKey;
+import java.security.SignatureException;
+import java.security.cert.CertificateException;
 import javax.security.auth.x500.X500Principal;
 import org.bouncycastle.util.io.pem.PemReader;
 import org.bouncycastle.openssl.PEMParser;
@@ -188,7 +190,12 @@ public class ServerFile {
             if(!signerAlsoVouched) continue;
             
             //If signer is in graph, verify signature
-            verifySignature(certSigner, cert);
+            try {
+                verifySignature(certSigner, cert);
+            } catch(SignatureException|CertificateException e) {
+                //Certificate/signature invalid; remove owner of certificate from graph
+                result.removeVertex(certOwner);
+            }
             
             //And now add directed edge from certificate signer to certificate owner
             result.addEdge(certSigner, certOwner);
