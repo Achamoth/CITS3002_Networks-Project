@@ -510,7 +510,7 @@ public class Server {
             PublicKey key = cert.getPublicKey();
             //Encrypt challenge number using public key
             byte[] plainText = intToByteArray(challenge);
-            byte[] cipherText = Challenge.encrypt(key, plainText);
+            byte[] cipherText = Crypto.encrypt(key, plainText);
             
             //Send client length of cipher
             dos.writeInt(cipherText.length);
@@ -531,7 +531,7 @@ public class Server {
             }
             
             //Decrypt received data with client's public key, and compare to challenge number
-            byte[] modifiedPlain = Challenge.decrypt(key, modifiedCipher);
+            byte[] modifiedPlain = Crypto.decrypt(key, modifiedCipher);
             int modChallenge = byteArrayToInt(modifiedPlain);
             boolean pass = (modChallenge == challenge + 1);
             
