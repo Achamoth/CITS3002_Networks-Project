@@ -192,8 +192,11 @@ public class ServerFile {
             //If signer is in graph, verify signature
             try {
                 verifySignature(certSigner, cert);
-            } catch(SignatureException|CertificateException e) {
-                //Certificate/signature invalid; remove owner of certificate from graph
+            } catch(SignatureException e) {
+                //Signature invalid; remove owner of certificate from graph
+                result.removeVertex(certOwner);
+            } catch(CertificateException e) {
+                //Certificate invalid; remove owner of certificate from graph
                 result.removeVertex(certOwner);
             }
             

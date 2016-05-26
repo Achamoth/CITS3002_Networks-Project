@@ -1,4 +1,15 @@
-//Written by Ammar Abu Shamleh
+/*
+ CITS3002 Project 2016
+ Name:			Ammar Abu Shamleh
+ Student number: 21521274
+ Date:           May 2016
+ */
+
+/*
+ * File not being directly used in project
+ * However, much of the code from this class (file transfer code etc.) is being used in message.c
+ * So I'm keeping the file on the repo for now
+ */
 
 #include <stdlib.h>
 #include <stdio.h>

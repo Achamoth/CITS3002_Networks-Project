@@ -1,5 +1,8 @@
 /*
- Public Key cryptography using the RSA algorithm.
+ CITS3002 Project 2016
+ Name:			Ammar Abu Shamleh, Pradyumn Vij
+ Student number: 21521274, 21469477
+ Date:           May 2016
  */
 
 import java.io.ByteArrayInputStream;
@@ -20,6 +23,9 @@ import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 
+/*
+ Public Key cryptography using the RSA algorithm.
+ */
 
 //This class deals with encryption and decryption for the server-client challenge, and the CSV file
 //http://www.mobilefish.com/developer/bouncycastle/bouncycastle.html
