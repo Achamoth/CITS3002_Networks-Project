@@ -9,8 +9,8 @@ set CERT = “”
 #	Ask user what filenames they want
 echo “Enter the desired private key pathname: ”
 read PRIVATE
-echo “Enter the desired public key pathname: “
-read PUBLIC
+#echo “Enter the desired public key pathname: “
+#read PUBLIC
 echo “Enter the desired certificate pathname: “
 read CERT
 
@@ -34,7 +34,7 @@ openssl genpkey -algorithm RSA -outform PEM -out $PRIVATE
 #	Input file is the private key
 #	Output file form is public with pubout
 #	Can make it more verbose by removing -text and -modulus
-openssl rsa -in $PRIVATE -outform PEM -out $PUBLIC -pubout
+#openssl rsa -in $PRIVATE -outform PEM -out $PUBLIC -pubout
 
 #	Generate a certificate
 #

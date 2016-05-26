@@ -33,3 +33,4 @@ openssl x509 -req -in $REQUEST -CAkey $SIGNER_KEY -CA $SIGNER_CERT -out $SIGNED_
 
 #	Clean up
 rm $REQUEST
+rm certificates/signed/*.srl
