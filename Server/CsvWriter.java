@@ -57,13 +57,13 @@ public class CsvWriter {
             try {
                 fw.flush();
                 fw.close();
-                //Encrypt file
-                try {
+                //Encrypt file (DISABLED)
+                /*try {
                     Crypto.encryptCSV();
                 } catch(Exception e) {
                     System.out.println("Error encrypting CSV file");
                     e.printStackTrace();
-                }
+                }*/
             }
             catch (IOException e) {
                 System.out.println("Error in flushing/closing filewriter");

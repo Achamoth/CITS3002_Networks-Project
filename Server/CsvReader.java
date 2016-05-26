@@ -31,9 +31,9 @@ public class CsvReader {
     readattempt: try {
         String line = null;
         
-        //First, decrypt file, if it exists
-        File test = new File("data");
-        if(test.isFile()) Crypto.decryptCSV();
+        //First, decrypt file, if it exists (DISABLED)
+        //File test = new File("data");
+        //if(test.isFile()) Crypto.decryptCSV();
         
         //Load file and create reader
         File f = new File(filename);
