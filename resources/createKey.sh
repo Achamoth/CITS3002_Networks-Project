@@ -9,7 +9,7 @@
 #	PEM file format
 #	Increase bits with -pkeyopt rsa_keygen_bits:2048
 #	Add pass with -aes-256-cbc -pass:password
-openssl genpkey -algorithm RSA -outform PEM -out private.key
+openssl genpkey -algorithm RSA -outform PEM -out keys/private.key
 
 #	Generate a public key
 #	Generally don't need as embedded in certificate as well
@@ -21,7 +21,7 @@ openssl genpkey -algorithm RSA -outform PEM -out private.key
 #	Input file is the private key
 #	Output file form is public with pubout
 #	Can make it more verbose by removing -text and -modulus
-openssl rsa -in private.key -outform PEM -out public.key -pubout
+openssl rsa -in keys/private.key -outform PEM -out keys/public.key -pubout
 
 #	Generate a certificate
 #
@@ -32,11 +32,11 @@ openssl rsa -in private.key -outform PEM -out public.key -pubout
 #	Reads the private key, generates an X509 PKCS#10 certifcate
 #	Valid for 90 days
 #	Req can also be used to write a private and public key as well as a cert
-openssl req -new -x509 -key private.key -outform PEM -out public.crt -days 90
+openssl req -new -x509 -key keys/private.key -outform PEM -out certificates/public.crt -days 90
 
 #	Check consistency of private key
 #	If all data needs to be printed add -text
-openssl rsa -in private.key -check -noout
+openssl rsa -in keys/private.key -check -noout
 
 #	Display certificate
-openssl x509 -in public.crt -text -noout
+openssl x509 -in certificates/public.crt -text -noout
