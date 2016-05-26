@@ -34,7 +34,7 @@ import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 //http://www.codejava.net/coding/file-encryption-and-decryption-simple-example
 public class Crypto {
     
-    //Encrypt plainText with public key
+    //Encrypt plainText with public key (for public key challenge)
     public static byte[] encrypt(PublicKey key, byte[] plainText) throws Exception {
         //Create RSA Cipher object (specifying algorithm, mode, and padding
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
@@ -45,7 +45,7 @@ public class Crypto {
         return cipherText;
     }
     
-    //Decrypt cipher with private key
+    //Decrypt cipher with private key (for public key challenge)
     public static byte[] decrypt(PublicKey key, byte[] cipherText) throws Exception {
         //Create RSA Cipher object (specifying algorithm, block chaining mode, and padding
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
@@ -60,7 +60,7 @@ public class Crypto {
     public static void encryptCSV() throws Exception {
         
         //Retrieve public key from Server's certificate
-        PublicKey key = getPublicKey("PEM/public.crt");
+        PublicKey publicKey = getPublicKey("PEM/public.crt");
         
         //Generate random symmetric key http://stackoverflow.com/questions/18228579/how-to-create-a-secure-random-aes-key-in-java
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
@@ -73,42 +73,46 @@ public class Crypto {
         
         //Initialize Cipher objects
         fileCipher.init(Cipher.ENCRYPT_MODE, secretKey);
-        keyCipher.init(Cipher.ENCRYPT_MODE, key);
+        keyCipher.init(Cipher.ENCRYPT_MODE, publicKey);
         
-        //Record and save IV for symmetric AES key
-        /*byte[] IV = fileCipher.getIV();
-        File outIV = new File("iv");
-        FileOutputStream fos = new FileOutputStream(outIV, false);
-        fos.write(IV);
-        fos.close();*/
+        //Open CSV file and read contents into byte array
+        byte[] inputBytes = Server.fileToBytes("data.csv");
         
-        //Open CSV file and read file into byte array
-        File in = new File("data.csv");
-        FileInputStream fis = new FileInputStream(in);
-        byte[] inputBytes = new byte[(int) in.length()];
-        fis.read(inputBytes);
-        
-        //Encrypt file with symmetric key and store cipher in byte array
-        byte[] outputBytes = fileCipher.doFinal(inputBytes);
+        //Get IV from cipher
+        byte[] iv = fileCipher.getIV();
         
         //Write encrypted file to disk
         File out = new File("data");
-        FileOutputStream fos = new FileOutputStream(out);
-        fos.write(outputBytes);
+        FileOutputStream fos = new FileOutputStream(out, false);
+        CipherOutputStream cos = new CipherOutputStream(fos, fileCipher);
+        cos.write(inputBytes);
+        cos.flush();
+        cos.close();
         fos.close();
         
         //Encrypt symmetric key with public key, and write encrypted key to disk
         File outKey = new File("symmetric.key");
         fos = new FileOutputStream(outKey, false);
+        cos = new CipherOutputStream(fos, keyCipher);
         byte[] keyBytes = secretKey.getEncoded();
-        byte[] encryptedKey = keyCipher.doFinal(keyBytes);
-        fos.write(encryptedKey);
+        cos.write(keyBytes);
+        cos.flush();
+        cos.close();
+        fos.close();
+        
+        //Encrypt iv with public key and write encrypted key to disk
+        File outIv = new File("iv");
+        fos = new FileOutputStream(outIv, false);
+        cos = new CipherOutputStream(fos, keyCipher);
+        cos.write(iv);
+        cos.flush();
     
         //Close file streams
-        fis.close();
+        cos.close();
         fos.close();
         
         //Delete "data.csv" (delete unencrypted data file)
+        File in = new File("data.csv");
         in.delete();
     }
     
@@ -120,16 +124,15 @@ public class Crypto {
         
         //Create Cipher objects (one for decrypting symmetric key using private key, and one for decrypting file using symmetric key)
         Cipher fileCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        Cipher keyCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         
         //Decrypt and retrieve symmetric key with private key
-        SecretKey symmetricKey = getSymmetricKey(privateKey, keyCipher);
+        SecretKey symmetricKey = getSymmetricKey(privateKey);
         
-        //Read IV
-        byte[] IV = Server.fileToBytes("iv");
+        //Retrieve iv
+        byte[] iv = retrieveIV(privateKey);
         
         //Initialize Cipher object
-        fileCipher.init(Cipher.DECRYPT_MODE, symmetricKey, new IvParameterSpec(IV));
+        fileCipher.init(Cipher.DECRYPT_MODE, symmetricKey, new IvParameterSpec(iv));
         
         //Open Encrypted file and read into byte array
         File in = new File("data");
@@ -141,7 +144,7 @@ public class Crypto {
         //Decrypt file and store plain text in byte array
         byte[] outputBytes = fileCipher.doFinal(inputBytes);
         
-        //Write encrypted file to disk
+        //Write decrypted file to disk
         File out = new File("data.csv");
         FileOutputStream fos = new FileOutputStream(out);
         fos.write(outputBytes);
@@ -159,7 +162,10 @@ public class Crypto {
     }
     
     //Given the private key, decrypt the symmetric key file, and retrieve the symmetric key object
-    private static SecretKey getSymmetricKey(PrivateKey privateKey, Cipher keyCipher) throws Exception{
+    private static SecretKey getSymmetricKey(PrivateKey privateKey) throws Exception{
+        
+        //Create cipher for decryption
+        Cipher keyCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         
         //First, store file's contents in byte array
         byte[] encryptedKey = Server.fileToBytes("symmetric.key");
@@ -174,6 +180,18 @@ public class Crypto {
         //Return secret key
         return secretKey;
         
+    }
+    
+    private static byte[] retrieveIV(PrivateKey privateKey) throws Exception {
+        //Store encrypted file contents into byte array
+        byte[] encryptedIv = Server.fileToBytes("iv");
+        //Create and initialize new cipher
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        cipher.init(Cipher.DECRYPT_MODE, privateKey);
+        //Decrypt byte array using private key
+        byte[] iv = cipher.doFinal(encryptedIv);
+        //Return decrypted IV
+        return iv;
     }
     
     //Retrieve public key object from specified certificate
