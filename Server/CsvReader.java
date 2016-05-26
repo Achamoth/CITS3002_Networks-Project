@@ -32,7 +32,8 @@ public class CsvReader {
         String line = null;
         
         //First, decrypt file, if it exists
-        Crypto.decryptCSV();
+        File test = new File("data");
+        if(test.isFile()) Crypto.decryptCSV();
         
         //Load file and create reader
         File f = new File(filename);
