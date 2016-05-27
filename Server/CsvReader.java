@@ -22,7 +22,7 @@ public class CsvReader {
     private static final String NEWLINE_DELIMITER = "\n";
     
     //Flag for encryption
-    private static final boolean DECRYPT = false;
+    private static final boolean DECRYPT = true;
     
     /**
      * Reads CSV file and processes data

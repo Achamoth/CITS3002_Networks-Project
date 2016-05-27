@@ -19,7 +19,7 @@ public class CsvWriter {
     private static final String NEWLINE_DELIMITER = "\n";
     
     //Encryption flag
-    private static final boolean ENCRYPT = false;
+    private static final boolean ENCRYPT = true;
     
     /*
      * Writes the file and vouch data to a CSV file using delimiters

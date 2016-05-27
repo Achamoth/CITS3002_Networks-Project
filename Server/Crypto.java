@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.BufferedInputStream;
 import java.security.*;
 import java.security.Security;
 import java.security.cert.X509Certificate;
@@ -32,6 +33,7 @@ import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 //This class deals with encryption and decryption for the server-client challenge, and the CSV file
 //http://www.mobilefish.com/developer/bouncycastle/bouncycastle.html
 //http://www.codejava.net/coding/file-encryption-and-decryption-simple-example
+//http://stackoverflow.com/questions/31944374/badpaddingexception-decryption-error
 public class Crypto {
     
     //Encrypt plainText with public key (for public key challenge)
@@ -81,7 +83,6 @@ public class Crypto {
         
         //Get IV from cipher
         byte[] iv = fileCipher.getIV();
-        System.out.print(iv.length);
         
         //Write encrypted file to disk
         File out = new File("data");
@@ -163,7 +164,13 @@ public class Crypto {
     //Given the private key, decrypt the symmetric key file, and retrieve the symmetric key object
     private static SecretKey getSymmetricKey() throws Exception{
         //First, store file's contents in byte array
-        byte[] encryptedBytes = Server.fileToBytes("symmetric");
+        File in = new File("symmetric");
+        BufferedInputStream  bif = new BufferedInputStream(new FileInputStream(in));
+        int fileLength = (int) in.length();
+        byte[] encryptedBytes = new byte[fileLength];
+        for(int i=0; i<fileLength; i++) {
+            encryptedBytes[i] = (byte) bif.read();
+        }
         //Now, retrieve Server's private key
         PrivateKey privateKey = getPrivateKey("PEM/private.key");
         //Now, set up Cipher to decrypt key
@@ -180,7 +187,13 @@ public class Crypto {
     //Retrieved iv from disk
     private static byte[] retrieveIV() throws Exception {
         //Store file contents into byte array
-        byte[] encrypted = Server.fileToBytes("iv");
+        File in = new File("iv");
+        BufferedInputStream bif = new BufferedInputStream(new FileInputStream(in));
+        int fileLength = (int) in.length();
+        byte[] encrypted = new byte[fileLength];
+        for(int i=0; i<fileLength; i++) {
+            encrypted[i] = (byte) bif.read();
+        }
         //Retrieve Server's private key
         PrivateKey privateKey = getPrivateKey("PEM/private.key");
         //Now, set up Cipher to decrypt IV
