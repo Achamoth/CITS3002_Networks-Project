@@ -104,9 +104,9 @@ static RSA *getRSAfrom(char *privateKeyFile){
  then re-encrypts with the private key and sends back to Server to prove
  that the client has the private key and is indeed holding the private key.
  */
-static void handleChallenge(SSL *ssl){
+static void handleChallenge(SSL *ssl, char *keyName){
     //  Get the RSA
-    RSA *privateKey = getRSAfrom(PRIVATE_KEY);
+    RSA *privateKey = getRSAfrom(keyName);
     // Size of key or RSA
     int keyLength = RSA_size(privateKey);
     
@@ -425,7 +425,16 @@ void vouch(SSL *ssl, char *file, char *certificate) {
     }
     
     //Server will now issue cryptographic challenge
-    handleChallenge(ssl);
+    //First, create path to appropriate private key (assume it's in "keys" folder)
+    char keyPath[100];
+    char *key = strdup(certificate);
+    int keyLength = strlen(key);
+    key[keyLength-1] = 'y'; key[keyLength-2] = 'e'; key[keyLength-3] = 'k';
+    sprintf(keyPath, "keys/%s", key);
+            
+    //Now respond to challenge
+    handleChallenge(ssl, keyPath);
+    free(key);
     
     //Now Server will inform the client whether or not it passed the challenge
     response = readResponse(ssl);
