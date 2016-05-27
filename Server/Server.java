@@ -321,7 +321,7 @@ public class Server {
         OutputStream output = null;
         try {
             input = new FileInputStream(source);
-            output = new FileOutputStream(dest);
+            output = new FileOutputStream(dest, false);
             byte[] buf = new byte[1024];
             int bytesRead;
             while ((bytesRead = input.read(buf)) > 0) {

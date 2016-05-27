@@ -21,6 +21,9 @@ public class CsvReader {
     private static final String COMMA_DELIMITER = ",";
     private static final String NEWLINE_DELIMITER = "\n";
     
+    //Flag for encryption
+    private static final boolean DECRYPT = false;
+    
     /**
      * Reads CSV file and processes data
      **/
@@ -31,9 +34,11 @@ public class CsvReader {
     readattempt: try {
         String line = null;
         
-        //First, decrypt file, if it exists (DISABLED)
-        //File test = new File("data");
-        //if(test.isFile()) Crypto.decryptCSV();
+        //First, decrypt file, if it exists
+        if(DECRYPT) {
+            File test = new File("data");
+            if(test.isFile()) Crypto.decryptCSV();
+        }
         
         //Load file and create reader
         File f = new File(filename);

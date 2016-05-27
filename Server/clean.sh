@@ -5,3 +5,4 @@ rm -r Files
 rm -r Certificates
 rm *.key
 rm iv
+rm symmetric

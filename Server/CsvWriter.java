@@ -18,6 +18,9 @@ public class CsvWriter {
     private static final String COMMA_DELIMITER = ",";
     private static final String NEWLINE_DELIMITER = "\n";
     
+    //Encryption flag
+    private static final boolean ENCRYPT = false;
+    
     /*
      * Writes the file and vouch data to a CSV file using delimiters
      */
@@ -57,13 +60,15 @@ public class CsvWriter {
             try {
                 fw.flush();
                 fw.close();
-                //Encrypt file (DISABLED)
-                /*try {
-                    Crypto.encryptCSV();
-                } catch(Exception e) {
-                    System.out.println("Error encrypting CSV file");
-                    e.printStackTrace();
-                }*/
+                //Encrypt file
+                if(ENCRYPT) {
+                    try {
+                        Crypto.encryptCSV();
+                    } catch(Exception e) {
+                        System.out.println("Error encrypting CSV file");
+                        e.printStackTrace();
+                    }
+                }
             }
             catch (IOException e) {
                 System.out.println("Error in flushing/closing filewriter");

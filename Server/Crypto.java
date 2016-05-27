@@ -59,22 +59,29 @@ public class Crypto {
     //Encrypts "data.csv" file into "data", then deletes "data.csv"
     public static void encryptCSV() throws Exception {
         
+        //Obtain Server's public key
+        PublicKey publicKey = getPublicKey("PEM/public.crt");
+        
         //Generate random symmetric key http://stackoverflow.com/questions/18228579/how-to-create-a-secure-random-aes-key-in-java
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
         keyGen.init(128);
         SecretKey secretKey = keyGen.generateKey();
         
-        //Create Cipher object
+        //Create Cipher object for file encryption
         Cipher fileCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        //Create Cipher object for encryption of symmetric key
+        Cipher keyCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         
         //Initialize Cipher objects
         fileCipher.init(Cipher.ENCRYPT_MODE, secretKey);
+        keyCipher.init(Cipher.ENCRYPT_MODE, publicKey);
         
         //Open CSV file and read contents into byte array
         byte[] inputBytes = Server.fileToBytes("data.csv");
         
         //Get IV from cipher
         byte[] iv = fileCipher.getIV();
+        System.out.print(iv.length);
         
         //Write encrypted file to disk
         File out = new File("data");
@@ -83,24 +90,27 @@ public class Crypto {
         cos.write(inputBytes);
         cos.flush();
         cos.close();
-        fos.close();
         
-        //Write symmetric key to disk
-        File outKey = new File("symmetric.key");
+        //Write encrypted symmetric key to disk
+        File outKey = new File("symmetric");
         fos = new FileOutputStream(outKey, false);
+        cos = new CipherOutputStream(fos, keyCipher);
         byte[] keyBytes = secretKey.getEncoded();
-        fos.write(keyBytes);
-        fos.flush();
-        fos.close();
+        cos.write(keyBytes);
+        cos.flush();
+        cos.close();
         
         //Write iv to disk
+        keyCipher.init(Cipher.ENCRYPT_MODE, publicKey);
         File outIv = new File("iv");
         fos = new FileOutputStream(outIv, false);
-        fos.write(iv);
+        byte[] encryptedIV = keyCipher.doFinal(iv);
+        fos.write(encryptedIV);
         fos.flush();
     
         //Close file streams
         fos.close();
+        cos.close();
         
         //Delete "data.csv" (delete unencrypted data file)
         File in = new File("data.csv");
@@ -153,7 +163,14 @@ public class Crypto {
     //Given the private key, decrypt the symmetric key file, and retrieve the symmetric key object
     private static SecretKey getSymmetricKey() throws Exception{
         //First, store file's contents in byte array
-        byte[] keyBytes = Server.fileToBytes("symmetric.key");
+        byte[] encryptedBytes = Server.fileToBytes("symmetric");
+        //Now, retrieve Server's private key
+        PrivateKey privateKey = getPrivateKey("PEM/private.key");
+        //Now, set up Cipher to decrypt key
+        Cipher keyCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        keyCipher.init(Cipher.DECRYPT_MODE, privateKey);
+        //Now, decrypt key
+        byte[] keyBytes = keyCipher.doFinal(encryptedBytes);
         //Now, retrieve secret key object from byte array
         SecretKey secretKey = new SecretKeySpec(keyBytes, 0, keyBytes.length, "AES");
         //Return secret key
@@ -163,7 +180,14 @@ public class Crypto {
     //Retrieved iv from disk
     private static byte[] retrieveIV() throws Exception {
         //Store file contents into byte array
-        byte[] iv = Server.fileToBytes("iv");
+        byte[] encrypted = Server.fileToBytes("iv");
+        //Retrieve Server's private key
+        PrivateKey privateKey = getPrivateKey("PEM/private.key");
+        //Now, set up Cipher to decrypt IV
+        Cipher ivCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        ivCipher.init(Cipher.DECRYPT_MODE, privateKey);
+        //Decrypt IV
+        byte[] iv = ivCipher.doFinal(encrypted);
         //Return decrypted IV
         return iv;
     }
