@@ -36,6 +36,8 @@
 #define PASS_CHALLENGE 21
 #define FAIL_CHALLENGE 22
 #define CRYPTO_FAIL 23
+#define CERT_NO_CONFLICT 24
+#define CERT_CONFLICT 25
 /*#define PUSH 1
 #define PULL 2
 #define PUSH_CERT 3

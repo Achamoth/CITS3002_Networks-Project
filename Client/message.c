@@ -232,7 +232,7 @@ static void sendFileString(char *fileName, SSL *ssl){
     @param isCert       String determine if certificate or file
     @param action       Type of message / action
 */
-static void sendFile(SSL *ssl, char *fileName){
+static void sendFile(SSL *ssl, char *fileName, bool isCert){
     //  Create file pointer
     FILE *fp = fopen(fileName, "rb");
     if(fp == NULL) {
@@ -265,6 +265,14 @@ static void sendFile(SSL *ssl, char *fileName){
             programName);
     }
     
+    if(isCert) {
+        //Send server size of file
+        fseek(fp, 0, SEEK_END);
+        int size = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+        sendInt(ssl, size);
+    }
+    
     //  Send file to server in 1024 byte chunks
     char buffer[1024];
     int written = 0;
@@ -286,6 +294,54 @@ static void sendFile(SSL *ssl, char *fileName){
     }
     //  Free allocated memory and close resources
     fclose(fp);
+    
+    //Now, if file is a certificate, some extra control work needs to be done
+    if(isCert) {
+        //First, server will report whether or not certificate with 'file' as name already exists
+        response = readResponse(ssl);
+        
+        //If no such certificate already exists, then simply return
+        if(response == CERT_NO_CONFLICT) {
+            fprintf(stdout, "%s: Certificate doesn't already exist on Server. Saved successfully\n", programName);
+        }
+        
+        //Otherwise, server will issue a public key challenge
+        else if (response == CERT_CONFLICT) {
+            //Server will now issue cryptographic challenge
+            fprintf(stdout, "%s: Certificate already exists on Server. Server issuing public key challenge to ensure client owns original certificate before replacing\n", programName);
+            //First, create path to appropriate private key (assume it's in "keys" folder)
+            char keyPath[100];
+            char *key = strdup(fileName);
+            int keyLength = strlen(key);
+            key[keyLength-1] = 'y'; key[keyLength-2] = 'e'; key[keyLength-3] = 'k';
+            sprintf(keyPath, "keys/%s", key);
+            
+            //Now respond to challenge
+            handleChallenge(ssl, keyPath);
+            free(key);
+            
+            //Now Server will inform the client whether or not it passed the challenge
+            response = readResponse(ssl);
+            if(response != PASS_CHALLENGE) {
+                if(response == FAIL_CHALLENGE) {
+                    fprintf(stderr, "%s Error: Failed to pass Server's cryptographic challenge. Authorization to replace certificate not given.\n", programName);
+                    closeConnection();
+                    exit(EXIT_FAILURE);
+                }
+                else { //Inappropriate response from Server
+                    fprintf(stderr, "%s Error: Unknown error.\n Response from Server: %d\n", programName, response);
+                    closeConnection();
+                    exit(EXIT_FAILURE);
+                }
+            }
+            
+            fprintf(stdout, "%s: Successfully passed Server's cryptographic challenge. Authorization to replace certificate given\n", programName);
+        }
+        
+        else {
+            fprintf(stdout, "%s: Error: Unknown error.\n Response form Server: %d\n", programName, response);
+        }
+    }
 }
 
 
@@ -537,7 +593,7 @@ void parseRequest(char *host, char *port, actionType action, char *file,
                 usage();
             }
             sendAction(ssl, PUSH);
-            sendFile(ssl, file);
+            sendFile(ssl, file, false);
             break;
         }
         case PULL:
@@ -553,7 +609,7 @@ void parseRequest(char *host, char *port, actionType action, char *file,
                 usage();
             }
             sendAction(ssl, PUSH_CERT);
-            sendFile(ssl, certificate);
+            sendFile(ssl, certificate, true);
             break;
         case VOUCH:
             //Vouch for specified file with specified certificate
