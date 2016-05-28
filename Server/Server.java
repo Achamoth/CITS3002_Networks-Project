@@ -304,6 +304,7 @@ public class Server {
         File dest = new File("Certificates/" + commonName + ".crt");
         File source = new File(filePath + "temp.crt");
         copyFileUsingFileStreams(source, dest);
+        removeCertFromCircles(commonName+".crt");
         
         //Now delete "temp.crt"
         source.delete();
@@ -312,6 +313,17 @@ public class Server {
         in.close();
         outStream.close();
         inStream.close();
+    }
+    
+    /*
+     * Given a  certificate name, remove that certificate from every file's list of vouchers
+     * To be used when a new certificate is uploaded to the server; ensures no security breach when a certificate is replaced
+     * Method ensures that a certificate replacement removes new cert from all circles of trust
+     */
+    private static void removeCertFromCircles(String certName) {
+        for(ServerFile f : files) {
+            f.removeCert(certName);
+        }
     }
     
     //Copy one file into another https://examples.javacodegeeks.com/core-java/io/file/4-ways-to-copy-file-in-java/
