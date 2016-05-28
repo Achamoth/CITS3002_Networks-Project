@@ -50,6 +50,11 @@ public class ServerFile {
         return this.certificates;
     }
     
+    //Removes specified certificate from this file's list of vouchers
+    public void removeCert(String certName) {
+        certificates.remove(certName);
+    }
+    
     //Calculates a circle of trust, and checks that the circle satisfies given requirements. Returns true or false
     public boolean meetsRequirements(int minCircleSize, String requiredMember) {
         //Need to start by initializing graph with vouchers

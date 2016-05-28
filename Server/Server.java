@@ -55,6 +55,8 @@ public class Server {
     private static final int PASS_CHALLENGE = 21;
     private static final int FAIL_CHALLENGE = 22;
     private static final int CRYPTO_FAIL = 23;
+    private static final int CERT_NO_CONFLICT = 24;
+    private static final int CERT_CONFLICT = 25;
     
     private static ArrayList<ServerFile> files;
     
@@ -283,8 +285,12 @@ public class Server {
         DataOutputStream dos = new DataOutputStream(outStream);
         dos.writeInt(ACKNOWLEDGMENT);
         
+        //Client will send size of file
+        DataInputStream dis = new DataInputStream(inStream);
+        int fileSize = dis.readInt();
+        
         //Read file till all bytes are finished
-        while (true) {
+        for(int i=0; i<fileSize; i++) {
             try{
                 int b = inStream.read();
                 if(b == -1) break;
@@ -300,18 +306,61 @@ public class Server {
         //Now, determine common name on certificate
         String commonName = getCommonName();
         
-        //Create new file with commonName as filename, and copy contents on "temp.crt" into it
+        //Create new file with commonName as filename
         File dest = new File("Certificates/" + commonName + ".crt");
         File source = new File(filePath + "temp.crt");
+        
+        //Check if a file with that commonName already exists
+        if(dest.isFile()) {
+            //If it does, report conflict to client
+            dos.writeInt(CERT_CONFLICT);
+            //Now, issue public key challenge to client, to ensure they own the original certificate
+            boolean pass = false;
+            pass = handleChallenge("Certificates/" + commonName + ".crt", dos, dis, outStream, inStream);
+            
+            //Check if client passed or failed
+            if(!pass) {
+                //Client failed challenge. Close resources, delete "temp.crt" and return
+                in.close();
+                outStream.close();
+                inStream.close();
+                dos.close();
+                dis.close();
+                source.delete();
+                return ;
+            }
+        }
+        else {
+            //If it doesn't, tell client that no conflict has occurred
+            dos.writeInt(CERT_NO_CONFLICT);
+            System.out.println("No conflict");
+        }
+        
+        //Copy contents of "temp.crt" into new file
         copyFileUsingFileStreams(source, dest);
+        //removeCertFromCircles(commonName+".crt");
         
         //Now delete "temp.crt"
         source.delete();
         
         //Close relevant resources
         in.close();
+        dis.close();
+        dos.close();
         outStream.close();
         inStream.close();
+    }
+    
+    /*
+     * Given a  certificate name, remove that certificate from every file's list of vouchers
+     * To be used when a new certificate is uploaded to the server; ensures no security breach when a certificate is replaced
+     * Method ensures that a certificate replacement removes new cert from all circles of trust
+     * DISABLED: As it's now only permitted for the original owner of a certificate to replace it
+     */
+    private static void removeCertFromCircles(String certName) {
+        for(ServerFile f : files) {
+            f.removeCert(certName);
+        }
     }
     
     //Copy one file into another https://examples.javacodegeeks.com/core-java/io/file/4-ways-to-copy-file-in-java/
@@ -485,73 +534,23 @@ public class Server {
         }
         dos.writeInt(FILE_FOUND);
         
-        try {
-            /* Now, verify that client owns certificate by sending them a challenge */
-            
-            //Generate a random challenge number
-            Random rng = new Random(System.nanoTime());
-            int challenge = rng.nextInt(10000)+1;
-            
-            /* Encrypt challenge number with public key on specified certificate */
-            byte[] certBytes = fileToBytes(certPath);
-            PemReader reader;
-            PEMParser parser;
-            //Use reader to create X509CertificateHolder object from corresponding byte array
-            reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(certBytes)));
-            parser = new PEMParser(reader);
-            X509CertificateHolder certHolder = (X509CertificateHolder)parser.readObject();
-            //Now convert X509CertificateHolder to X509Certificate
-            JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
-            X509Certificate cert = certConverter.setProvider("BC").getCertificate(certHolder);
-            //Extract public ket from X509Certificate
-            PublicKey key = cert.getPublicKey();
-            //Encrypt challenge number using public key
-            byte[] plainText = intToByteArray(challenge);
-            byte[] cipherText = Crypto.encrypt(key, plainText);
-            
-            //Send client length of cipher
-            dos.writeInt(cipherText.length);
-            
-            //Send encrypted challenge number to client byte-by-byte
-            for(int i=0; i<cipherText.length; i++) {
-                outStream.write(cipherText[i]);
-            }
-            
-            //Receive keyLength
-            int keyLength = dis.readInt();
-            
-            //Receive encrypted, incremented challenge number from client
-            byte[] modifiedCipher = new byte[128];
-            for(int i=0; i<keyLength; i++) {
-                byte b = (byte) inStream.read();
-                modifiedCipher[i] = b;
-            }
-            
-            //Decrypt received data with client's public key, and compare to challenge number
-            byte[] modifiedPlain = Crypto.decrypt(key, modifiedCipher);
-            int modChallenge = byteArrayToInt(modifiedPlain);
-            boolean pass = (modChallenge == challenge + 1);
-            
-            //Tell client whether they passed or failed
-            if(pass) {
-                //Tell client they passed
-                dos.writeInt(PASS_CHALLENGE);
-            }
-            else {
-                //Tell client they failed. Return
-                dos.writeInt(FAIL_CHALLENGE);
-                return;
-            }
-        } catch(Exception e) {
-            //Encryption/decryption probably failed
-            e.printStackTrace();
+        /* Now, verify that client owns certificate by sending them a challenge */
+        boolean pass = false;
+        pass = handleChallenge(certPath, dos, dis, outStream, inStream);
+        
+        //Check if client failed challenge
+        if(!pass) {
+            //Close all resources and return
+            inStream.close();
+            outStream.close();
+            dos.close();
+            dis.close();
+            in.close();
             return ;
         }
         
-        //We've found file and certificate, so now vouch for file with certificate
+        //We've found file and certificate, and client passed challenge so now vouch for file with certificate
         f.vouch(certName);
-        
-        //TODO: Might want to send success code back to client. I'll leave it for now.
         
         //Close relevant resources
         inStream.close();
@@ -559,6 +558,65 @@ public class Server {
         dos.close();
         dis.close();
         in.close();
+    }
+    
+    //Issue public key challenge to client with given certificate, using given streams
+    public static boolean handleChallenge(String certPath, DataOutputStream dos, DataInputStream dis, OutputStream outStream, InputStream inStream) throws Exception {
+        //Generate a random challenge number
+        Random rng = new Random(System.nanoTime());
+        int challenge = rng.nextInt(10000)+1;
+        
+        /* Encrypt challenge number with public key on specified certificate */
+        byte[] certBytes = fileToBytes(certPath);
+        PemReader reader;
+        PEMParser parser;
+        //Use reader to create X509CertificateHolder object from corresponding byte array
+        reader = new PemReader(new InputStreamReader(new ByteArrayInputStream(certBytes)));
+        parser = new PEMParser(reader);
+        X509CertificateHolder certHolder = (X509CertificateHolder)parser.readObject();
+        //Now convert X509CertificateHolder to X509Certificate
+        JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
+        X509Certificate cert = certConverter.setProvider("BC").getCertificate(certHolder);
+        //Extract public ket from X509Certificate
+        PublicKey key = cert.getPublicKey();
+        //Encrypt challenge number using public key
+        byte[] plainText = intToByteArray(challenge);
+        byte[] cipherText = Crypto.encrypt(key, plainText);
+        
+        //Send client length of cipher
+        dos.writeInt(cipherText.length);
+        
+        //Send encrypted challenge number to client byte-by-byte
+        for(int i=0; i<cipherText.length; i++) {
+            outStream.write(cipherText[i]);
+        }
+        
+        //Receive keyLength
+        int keyLength = dis.readInt();
+        
+        //Receive encrypted, incremented challenge number from client
+        byte[] modifiedCipher = new byte[128];
+        for(int i=0; i<keyLength; i++) {
+            byte b = (byte) inStream.read();
+            modifiedCipher[i] = b;
+        }
+        
+        //Decrypt received data with client's public key, and compare to challenge number
+        byte[] modifiedPlain = Crypto.decrypt(key, modifiedCipher);
+        int modChallenge = byteArrayToInt(modifiedPlain);
+        boolean pass = (modChallenge == challenge + 1);
+        
+        //Tell client whether they passed or failed
+        if(pass) {
+            //Tell client they passed
+            dos.writeInt(PASS_CHALLENGE);
+            return true;
+        }
+        else {
+            //Tell client they failed. Return
+            dos.writeInt(FAIL_CHALLENGE);
+            return false;
+        }
     }
     
     //Convert byte array to int
