@@ -73,6 +73,7 @@ public class Server {
             
             public void run() {
                 CsvWriter.writeToCSV("data.csv", files);
+                System.out.print("\n");
             }
         }));
         
