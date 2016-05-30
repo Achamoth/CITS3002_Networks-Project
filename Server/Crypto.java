@@ -47,13 +47,13 @@ public class Crypto {
         return cipherText;
     }
     
-    //Decrypt cipher with private key (for public key challenge)
+    //Decrypt cipher with public key (for public key challenge)
     public static byte[] decrypt(PublicKey key, byte[] cipherText) throws Exception {
         //Create RSA Cipher object (specifying algorithm, block chaining mode, and padding
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         //Initialize Cipher object
         cipher.init(Cipher.DECRYPT_MODE, key);
-        //Encrypt plaintext using the public key
+        //Decrypt plaintext using the public key
         byte[] plainText= cipher.doFinal(cipherText);
         return plainText;
     }

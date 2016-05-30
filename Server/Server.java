@@ -445,7 +445,7 @@ public class Server {
             //Read name of required member
             requiredMember = in.readLine().trim();
         }
-        if(memberRequired != MEMBER_NOT_REQUIRED) {
+        else if(memberRequired != MEMBER_NOT_REQUIRED) {
             //An error must have occurred....do something
         }
         
