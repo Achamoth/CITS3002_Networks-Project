@@ -5,6 +5,7 @@
     Date:           May 2016
 */
 #include "client.h"
+#define BUFFER_SIZE 65536
 
 /*
  readByteArray
@@ -273,8 +274,8 @@ static void sendFile(SSL *ssl, char *fileName, bool isCert){
         sendInt(ssl, size);
     }
     
-    //  Send file to server in 1024 byte chunks
-    char buffer[1024];
+    //  Send file to server in chunks
+    char buffer[BUFFER_SIZE];
     int written = 0;
     int read = 0;
     int bytes = (int) fread(buffer, sizeof(char), sizeof(buffer), fp);
@@ -416,7 +417,7 @@ void getFile(SSL *ssl, char *fileName, int security, char* member) {
         exit(EXIT_FAILURE);
     }
     //  Wait for server to send file, and read it 1024 bytes at a time
-    unsigned char buffer[1024];
+    unsigned char buffer[BUFFER_SIZE];
     int written = 0;
     int read = 0;
     int bytes = SSL_read(ssl, buffer, sizeof(buffer));

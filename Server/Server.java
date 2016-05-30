@@ -41,7 +41,7 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 public class Server {
     
     private static final int PORT = 8889;
-    private static final int BUFFER_SIZE = 100;
+    private static final int BUFFER_SIZE = 65536;
     
     private static final int ACKNOWLEDGMENT = 10;
     private static final int FILE_TRUSTWORTHY = 8;
@@ -244,13 +244,18 @@ public class Server {
         dos.writeInt(ACKNOWLEDGMENT);
         
         //Read file till all bytes are finished
-        while (true) {
-            try{
-                int b = inStream.read();
-                if(b == -1) break;
-                fos.write(b);
-            } catch(Exception e) {
-                e.printStackTrace();
+        BufferedInputStream bis = new BufferedInputStream(inStream);
+        BufferedOutputStream bos = new BufferedOutputStream(fos);
+        byte[] buffer = new byte[BUFFER_SIZE];
+        int totalRead = 0;
+        int read = 0;
+        while ((read = bis.read(buffer)) != -1) {
+            totalRead += read;
+            if(read < BUFFER_SIZE) {
+                bos.write(buffer, 0, read);
+            }
+            else {
+                bos.write(buffer);
             }
         }
         
@@ -261,6 +266,8 @@ public class Server {
         files.add(file);
         
         //Close relevant resources
+        bos.close();
+        bis.close();
         fos.close();
         in.close();
         outStream.close();
@@ -467,19 +474,26 @@ public class Server {
         }
         dos.writeInt(FILE_TRUSTWORTHY);
         
-        //If it does, send file byte by byte
+        //If it does, send file in chunks
+        byte[] buffer = new byte[BUFFER_SIZE];
         fis = new FileInputStream(f);
-        try {
-            while(true) {
-                int b = fis.read();
-                if(b == -1) break;
-                outStream.write(b);
+        BufferedInputStream bis = new BufferedInputStream(fis);
+        BufferedOutputStream bos = new BufferedOutputStream(outStream);
+        int totalRead = 0;
+        int read = 0;
+        while((read = bis.read(buffer)) != -1) {
+            totalRead += read;
+            if(read < BUFFER_SIZE) {
+                bos.write(buffer, 0, read);
             }
-        } catch(Exception e) {
-            e.printStackTrace();
+            else {
+                bos.write(buffer);
+            }
         }
-        
+    
         //Close relevant resources
+        bos.close();
+        bis.close();
         dos.close();
         fis.close();
         in.close();
